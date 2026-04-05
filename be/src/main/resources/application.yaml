@@ -1,0 +1,90 @@
+# ===================================================================
+# 1. CẤU HÌNH SERVER & ỨNG DỤNG
+# ===================================================================
+server:
+  port: 8080                              # Cổng chạy ứng dụng backend
+  servlet:
+    context-path: /api/v1                 # Tiền tố chung cho toàn bộ API (VD: http://localhost:8080/api/v1/users)
+
+spring:
+  application:
+    name: fcar-backend
+  profiles:
+    active: dev                           # Profile đang chạy (dev, prod, test). Giúp dễ dàng tách file cấu hình sau này.
+
+  # ===================================================================
+  # 2. CẤU HÌNH DATABASE (MySQL)
+  # ===================================================================
+  datasource:
+    url: jdbc:mysql://localhost:3306/fcar_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: root                        # Tài khoản MySQL
+    password: 123123123                   # Mật khẩu MySQL
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    # Tối ưu hóa Connection Pool (HikariCP)
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  # ===================================================================
+  # 3. CẤU HÌNH FLYWAY (Quản lý phiên bản Database)
+  # ===================================================================
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # ===================================================================
+  # 4. CẤU HÌNH JPA & HIBERNATE (Giao tiếp với Database)
+  # ===================================================================
+  jpa:
+    hibernate:
+      ddl-auto: none                # Validate code Java với Database, không tự tạo bảng
+    show-sql: true
+    open-in-view: false
+
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        highlight_sql: true
+
+  # ===================================================================
+  # 5. CẤU HÌNH OAUTH2 (ĐĂNG NHẬP GOOGLE/FACEBOOK)
+  # Đã được gom vào đúng phân cấp của nhánh "spring"
+  # ===================================================================
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            authorization-grant-type: authorization_code # Đảm bảo sử dụng kiến trúc Authorization Code
+        provider:
+          google:
+            user-name-attribute: email
+
+# ===================================================================
+# 6. CẤU HÌNH BẢO MẬT & JWT TOKEN (Tự định nghĩa)
+# ===================================================================
+app:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    expiration-ms: 86400000
+
+# ===================================================================
+# 6. CẤU HÌNH SWAGGER (Tài liệu API tự động)
+# ===================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
