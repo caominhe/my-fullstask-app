@@ -2,6 +2,7 @@ package com.fcar.be.modules.identity.service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -49,6 +50,32 @@ public class UserService {
         return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
     }
 
+    /**
+     * Gán lại toàn bộ role cho user (thay thế set cũ). Chỉ gọi từ API được bảo vệ ADMIN.
+     */
+    @Transactional
+    public UserResponse updateUserRoles(Long userId, Set<String> roleNames) {
+        User target = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        String actorEmail =
+                SecurityContextHolder.getContext().getAuthentication().getName();
+        User actor =
+                userRepository.findByEmail(actorEmail).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (actor.getId().equals(target.getId()) && roleNames.stream().noneMatch("ADMIN"::equals)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        HashSet<Role> newRoles = new HashSet<>();
+        for (String name : roleNames) {
+            Role role = roleRepository.findById(name).orElseThrow(() -> new AppException(ErrorCode.INVALID_ROLE_NAME));
+            newRoles.add(role);
+        }
+
+        target.setRoles(newRoles);
+        return userMapper.toUserResponse(userRepository.save(target));
+    }
+
     @Transactional
     public UserResponse onboardUser(UserOnboardRequest request) {
         // 1. Lấy username/email của user hiện hành từ JWT Token
@@ -77,17 +104,9 @@ public class UserService {
         // Lấy email đang đăng nhập từ Security Context (lấy từ JWT Token)
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        // Tìm user trong DB
+        // Tìm user trong DB (roles cần có để FE phân quyền /users/my-info)
         User user = userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // Convert sang Response (bạn có thể dùng userMapper nếu có sẵn)
-        return UserResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .avatar(user.getAvatar()) // <-- Thêm dòng này để trả về cho Frontend
-                .fullName(user.getFullName())
-                .phone(user.getPhone())
-                .status(user.getStatus())
-                .build();
+        return userMapper.toUserResponse(user);
     }
 }

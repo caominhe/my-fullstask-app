@@ -77,6 +77,10 @@ app:
   jwt:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     expiration-ms: 86400000
+  # Tài khoản admin khởi tạo lần đầu (AdminUserBootstrap). Đăng nhập bằng email + mật khẩu.
+  security:
+    bootstrap-admin-email: admin@fcar.local
+    bootstrap-admin-password: admin
 
 # ===================================================================
 # 6. CẤU HÌNH SWAGGER (Tài liệu API tự động)

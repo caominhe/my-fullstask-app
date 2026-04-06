@@ -4,9 +4,11 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
+import com.fcar.be.modules.identity.dto.request.UpdateUserRolesRequest;
 import com.fcar.be.modules.identity.dto.request.UserCreationRequest;
 import com.fcar.be.modules.identity.dto.request.UserOnboardRequest;
 import com.fcar.be.modules.identity.dto.response.UserResponse;
@@ -28,9 +30,20 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<UserResponse>> getAllUsers() {
         return ApiResponse.<List<UserResponse>>builder()
                 .result(userService.getAllUsers())
+                .build();
+    }
+
+    /** Admin: gán lại toàn bộ role cho user (thay thế danh sách role cũ). */
+    @PutMapping("/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserResponse> updateUserRoles(
+            @PathVariable Long id, @RequestBody @Valid UpdateUserRolesRequest request) {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.updateUserRoles(id, request.getRoleNames()))
                 .build();
     }
 

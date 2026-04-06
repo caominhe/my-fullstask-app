@@ -4,10 +4,18 @@ import java.util.HashSet;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fcar.be.core.exception.AppException;
@@ -21,7 +29,13 @@ import com.fcar.be.modules.identity.repository.RoleRepository;
 import com.fcar.be.modules.identity.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Google token endpoint bắt buộc body dạng {@code application/x-www-form-urlencoded}, không phải JSON.
+ * Gửi Map trực tiếp qua RestTemplate thường bị serialize thành JSON → Google trả 400 → lỗi "Uncategorized".
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -37,8 +51,7 @@ public class AuthenticationService {
     @Value("${spring.security.oauth2.client.registration.google.client-secret}")
     private String googleClientSecret;
 
-    // Đây là URI mà Frontend React đang chạy
-    private final String GOOGLE_REDIRECT_URI = "http://localhost:3000/authenticate";
+    private static final String GOOGLE_REDIRECT_URI = "http://localhost:3000/authenticate";
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         var user = userRepository
@@ -56,41 +69,66 @@ public class AuthenticationService {
 
     @Transactional
     public AuthenticationResponse authenticateWithGoogle(String code) {
-        // 1. Đổi Code lấy Google Access Token
         String tokenEndpoint = "https://oauth2.googleapis.com/token";
-        Map<String, String> tokenRequest = Map.of(
-                "code", code,
-                "client_id", googleClientId,
-                "client_secret", googleClientSecret,
-                "redirect_uri", GOOGLE_REDIRECT_URI,
-                "grant_type", "authorization_code");
 
-        ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(tokenEndpoint, tokenRequest, Map.class);
-        String googleAccessToken = (String) tokenResponse.getBody().get("access_token");
-
-        // 2. Dùng Access Token gọi lấy UserInfo từ Google
-        String userInfoEndpoint = "https://www.googleapis.com/oauth2/v3/userinfo";
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(googleAccessToken);
-        HttpEntity<String> entity = new HttpEntity<>("", headers);
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        ResponseEntity<Map> userInfoResponse =
-                restTemplate.exchange(userInfoEndpoint, HttpMethod.GET, entity, Map.class);
-        String email = (String) userInfoResponse.getBody().get("email");
-        String name = (String) userInfoResponse.getBody().get("name");
-        String picture = (String) userInfoResponse.getBody().get("picture"); // <-- Lấy link ảnh từ Google
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("code", code);
+        form.add("client_id", googleClientId);
+        form.add("client_secret", googleClientSecret);
+        form.add("redirect_uri", GOOGLE_REDIRECT_URI);
+        form.add("grant_type", "authorization_code");
 
-        // 3. Xử lý Logic FCAR: Đã có user chưa?
+        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(form, headers);
+
+        ResponseEntity<Map> tokenResponse;
+        try {
+            tokenResponse = restTemplate.postForEntity(tokenEndpoint, requestEntity, Map.class);
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("Google token exchange HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
+        }
+
+        Map<String, Object> body = tokenResponse.getBody();
+        if (body == null || !body.containsKey("access_token")) {
+            log.error("Google token response missing access_token: {}", body);
+            throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
+        }
+        String googleAccessToken = (String) body.get("access_token");
+
+        String userInfoEndpoint = "https://www.googleapis.com/oauth2/v3/userinfo";
+        HttpHeaders userHeaders = new HttpHeaders();
+        userHeaders.setBearerAuth(googleAccessToken);
+        HttpEntity<String> userEntity = new HttpEntity<>("", userHeaders);
+
+        ResponseEntity<Map> userInfoResponse;
+        try {
+            userInfoResponse = restTemplate.exchange(userInfoEndpoint, HttpMethod.GET, userEntity, Map.class);
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("Google userinfo HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
+        }
+        Map<String, Object> userInfo = userInfoResponse.getBody();
+        if (userInfo == null || userInfo.get("email") == null) {
+            log.error("Google userinfo missing email: {}", userInfo);
+            throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
+        }
+
+        String email = (String) userInfo.get("email");
+        String name = (String) userInfo.get("name");
+        String picture = (String) userInfo.get("picture");
+
         var userOpt = userRepository.findByEmail(email);
         User user;
         boolean requireOnboard = false;
 
         if (userOpt.isEmpty()) {
-            // User mới tinh -> Tạo nháp (PENDING_ONBOARD)
             user = User.builder()
                     .email(email)
-                    .fullName(name)
-                    .avatar(picture) // <-- Lưu vào DB
+                    .fullName(name != null ? name : email)
+                    .avatar(picture)
                     .status("PENDING_ONBOARD")
                     .build();
 
@@ -105,13 +143,12 @@ public class AuthenticationService {
             if ("PENDING_ONBOARD".equals(user.getStatus())) {
                 requireOnboard = true;
             }
-            if (user.getAvatar() == null) {
+            if (user.getAvatar() == null && picture != null) {
                 user.setAvatar(picture);
                 userRepository.save(user);
             }
         }
 
-        // 4. Sinh JWT của hệ thống FCAR
         String fcarToken = jwtTokenProvider.generateToken(user.getEmail());
 
         return AuthenticationResponse.builder()
