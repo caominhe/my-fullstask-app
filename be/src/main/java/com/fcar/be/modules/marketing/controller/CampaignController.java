@@ -5,6 +5,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
@@ -22,6 +23,7 @@ public class CampaignController {
     private final MarketingService marketingService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Campaign> createCampaign(@RequestBody @Valid CampaignCreateReq request) {
         return ApiResponse.<Campaign>builder()
                 .result(marketingService.createCampaign(request))
@@ -29,6 +31,7 @@ public class CampaignController {
     }
 
     @PostMapping("/{campaignId}/generate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<VoucherRes>> generateVouchers(
             @PathVariable Long campaignId,
             @RequestParam int quantity,

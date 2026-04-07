@@ -1,5 +1,6 @@
 package com.fcar.be.modules.marketing.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
@@ -19,6 +20,7 @@ public class EventController {
     private final MarketingService marketingService;
 
     @PostMapping("/{eventId}/register")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<VoucherRes> registerEvent(@PathVariable Long eventId) {
         Long userId = SecurityUtils.getCurrentUserId().orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 

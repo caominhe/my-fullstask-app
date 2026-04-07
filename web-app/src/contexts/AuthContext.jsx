@@ -1,57 +1,74 @@
-import { createContext, useState, useEffect, useContext } from "react";
-import { getToken, setToken as saveToken, removeToken } from "../services/localStorageService";
+import { createContext, useState, useEffect, useContext, useCallback } from "react";
+import {
+  getToken,
+  setToken as saveToken,
+  removeAllAuthTokens,
+  setRefreshToken,
+} from "../services/localStorageService";
+import { logoutOnServer } from "../services/authApiService";
+import { fetchMyInfo } from "../services/userService";
 
-// Tạo Context
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Khi app khởi chạy, kiểm tra xem có token cũ không để phục hồi trạng thái
   useEffect(() => {
     const initAuth = async () => {
       const token = getToken();
       if (token) {
         try {
-          // Gọi API my-info để lấy thông tin user. (Tái sử dụng logic cũ của bạn)
-          const response = await fetch("http://localhost:8080/api/v1/users/my-info", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.result);
-          } else {
-            removeToken(); // Token hết hạn hoặc lỗi
-          }
+          const profile = await fetchMyInfo();
+          setUser(profile);
         } catch (error) {
           console.error("Lỗi xác thực", error);
+          removeAllAuthTokens();
         }
       }
-      setLoading(false); // Xong bước kiểm tra
+      setLoading(false);
     };
     initAuth();
   }, []);
 
-  // Hàm gọi khi Login thành công
-  const login = (token, userData) => {
+  const login = useCallback((token, userData, refreshToken) => {
     saveToken(token);
+    if (refreshToken) {
+      setRefreshToken(refreshToken);
+    }
     setUser(userData);
-  };
+  }, []);
 
-  // Hàm gọi khi Đăng xuất
-  const logout = () => {
-    removeToken();
-    setUser(null);
-    window.location.href = "/login"; // Force redirect
-  };
+  const logout = useCallback(async () => {
+    try {
+      await logoutOnServer();
+    } catch (error) {
+      console.error("Lỗi khi báo backend logout:", error);
+    } finally {
+      removeAllAuthTokens();
+      setUser(null);
+      window.location.href = "/login";
+    }
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    const profile = await fetchMyInfo();
+    setUser(profile);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {!loading && children} {/* Chỉ render app khi đã check auth xong */}
+    <AuthContext.Provider value={{ user, login, logout, loading, refreshUser, setUser }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook để dùng cho tiện
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return ctx;
+};

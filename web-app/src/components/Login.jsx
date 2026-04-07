@@ -5,129 +5,162 @@ import {
   CardActions,
   CardContent,
   Divider,
+  Link,
   TextField,
   Typography,
+  Alert,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
 import { OAuthConfig } from "../configurations/configuration";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getToken } from "../services/localStorageService";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { getToken, setRefreshToken, setToken as saveToken } from "../services/localStorageService";
+import { useAuth } from "../contexts/AuthContext";
+import { loginWithPassword } from "../services/authApiService";
+import { fetchMyInfo } from "../services/userService";
+import { getPostLoginPath } from "../utils/authRedirect";
+import { ROUTES } from "../constants/routes";
+import AuthHeroLayout from "../modules/common/AuthHeroLayout";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, login, loading } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleClick = () => {
+  const handleGoogle = () => {
     const callbackUrl = OAuthConfig.redirectUri;
     const authUrl = OAuthConfig.authUri;
     const googleClientId = OAuthConfig.clientId;
-
-    const targetUrl = `${authUrl}?redirect_uri=${encodeURIComponent(
-      callbackUrl
-    )}&response_type=code&client_id=${googleClientId}&scope=openid%20email%20profile`;
-
-    console.log(targetUrl);
-
-    window.location.href = targetUrl;
+    const params = new URLSearchParams({
+      redirect_uri: callbackUrl,
+      response_type: "code",
+      client_id: googleClientId,
+      scope: "openid email profile",
+      prompt: "select_account",
+    });
+    window.location.href = `${authUrl}?${params.toString()}`;
   };
 
   useEffect(() => {
-    const accessToken = getToken();
-
-    if (accessToken) {
-      navigate("/");
+    if (loading) return;
+    const token = getToken();
+    if (token && user) {
+      navigate(getPostLoginPath(user), { replace: true });
     }
-  }, [navigate]);
+  }, [loading, user, navigate]);
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    // Handle form submission
-    console.log("Username:", username);
-    console.log("Password:", password);
+    setError("");
+    if (!email?.trim() || !password) {
+      setError("Vui lòng nhập email và mật khẩu.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const auth = await loginWithPassword({ email: email.trim(), password });
+      saveToken(auth.token);
+      if (auth.refreshToken) {
+        setRefreshToken(auth.refreshToken);
+      }
+      const profile = await fetchMyInfo();
+      login(auth.token, profile, auth.refreshToken);
+      if (profile.status === "PENDING_ONBOARD") {
+        navigate(ROUTES.ONBOARD, { replace: true });
+      } else {
+        navigate(getPostLoginPath(profile), { replace: true });
+      }
+    } catch (err) {
+      setError(err.message || "Đăng nhập thất bại.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  const registered = location.state?.registered;
+  const oauthError = location.state?.oauthError;
   return (
-    <>
-      <Box
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        height="100vh"
-        bgcolor={"#f0f2f5"}
-      >
-        <Card
-          sx={{
-            minWidth: 250,
-            maxWidth: 400,
-            boxShadow: 4,
-            borderRadius: 4,
-            padding: 4,
-          }}
-        >
-          <CardContent>
-            <Typography variant="h5" component="h1" gutterBottom>
-              Welcome to Devtetia
-            </Typography>
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-              <TextField
-                label="Username"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-              <TextField
-                label="Password"
-                type="password"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </Box>
-          </CardContent>
-          <CardActions>
-            <Box display="flex" flexDirection="column" width="100%" gap="25px">
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                size="large"
-                fullWidth
-              >
-                Login
-              </Button>
-              <Button
-                type="button"
-                variant="contained"
-                color="secondary"
-                size="large"
-                onClick={handleClick}
-                fullWidth
-                sx={{ gap: "10px" }}
-              >
-                <GoogleIcon />
-                Continue with Google
-              </Button>
-              <Divider></Divider>
-              <Button
-                type="submit"
-                variant="contained"
-                color="success"
-                size="large"
-              >
-                Create an account
-              </Button>
-            </Box>
-          </CardActions>
-        </Card>
-      </Box>
-    </>
+    <AuthHeroLayout>
+      <Card sx={{ minWidth: 280, maxWidth: 420, boxShadow: 6, borderRadius: 2, p: 1, bgcolor: "rgba(255,255,255,0.98)" }}>
+        <CardContent>
+          <Typography variant="h5" component="h1" gutterBottom fontWeight={700}>
+            Đăng nhập FCAR
+          </Typography>
+          {registered ? (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Đăng ký thành công. Vui lòng đăng nhập.
+            </Alert>
+          ) : null}
+          {oauthError ? (
+            <Alert severity="warning" sx={{ mb: 2 }} onClose={() => navigate(location.pathname, { replace: true, state: {} })}>
+              {oauthError}
+            </Alert>
+          ) : null}
+          {error ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          ) : null}
+          <Box component="form" onSubmit={handleSubmit}>
+            <TextField
+              label="Email đăng nhập"
+              type="email"
+              fullWidth
+              required
+              margin="normal"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              helperText="Hệ thống dùng email làm tên đăng nhập (trùng email Google nếu bạn đăng ký qua Google)."
+            />
+            <TextField
+              label="Mật khẩu"
+              type="password"
+              fullWidth
+              required
+              margin="normal"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+              fullWidth
+              sx={{ mt: 2 }}
+              disabled={submitting}
+            >
+              {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
+            </Button>
+          </Box>
+        </CardContent>
+        <CardActions sx={{ flexDirection: "column", px: 2, pb: 2, pt: 0, gap: 1.5 }}>
+          <Button
+            type="button"
+            variant="outlined"
+            color="primary"
+            size="large"
+            fullWidth
+            onClick={handleGoogle}
+            startIcon={<GoogleIcon />}
+          >
+            Tiếp tục với Google
+          </Button>
+          <Divider flexItem sx={{ width: "100%" }} />
+          <Typography variant="body2">
+            Chưa có tài khoản?{" "}
+            <Link component={RouterLink} to={ROUTES.REGISTER}>
+              Đăng ký
+            </Link>
+          </Typography>
+        </CardActions>
+      </Card>
+    </AuthHeroLayout>
   );
 }

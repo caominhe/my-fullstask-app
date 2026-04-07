@@ -22,9 +22,13 @@ import com.fcar.be.core.exception.AppException;
 import com.fcar.be.core.exception.ErrorCode;
 import com.fcar.be.core.security.JwtTokenProvider;
 import com.fcar.be.modules.identity.dto.request.AuthenticationRequest;
+import com.fcar.be.modules.identity.dto.request.LogoutRequest;
+import com.fcar.be.modules.identity.dto.request.RefreshTokenRequest;
 import com.fcar.be.modules.identity.dto.response.AuthenticationResponse;
+import com.fcar.be.modules.identity.entity.InvalidatedRefreshToken;
 import com.fcar.be.modules.identity.entity.Role;
 import com.fcar.be.modules.identity.entity.User;
+import com.fcar.be.modules.identity.repository.InvalidatedRefreshTokenRepository;
 import com.fcar.be.modules.identity.repository.RoleRepository;
 import com.fcar.be.modules.identity.repository.UserRepository;
 
@@ -44,6 +48,7 @@ public class AuthenticationService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RestTemplate restTemplate;
     private final RoleRepository roleRepository;
+    private final InvalidatedRefreshTokenRepository invalidatedRefreshTokenRepository;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
@@ -63,8 +68,58 @@ public class AuthenticationService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        var token = jwtTokenProvider.generateToken(user.getEmail());
-        return AuthenticationResponse.builder().token(token).authenticated(true).build();
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
+        return AuthenticationResponse.builder()
+                .token(accessToken)
+                .refreshToken(refreshToken)
+                .authenticated(true)
+                .build();
+    }
+
+    @Transactional
+    public void logout(LogoutRequest request) {
+        String refreshToken = request.getRefreshToken();
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+        String jti = jwtTokenProvider.getJwtId(refreshToken);
+        if (jti == null || jti.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+        if (invalidatedRefreshTokenRepository.existsByJti(jti)) {
+            return;
+        }
+        invalidatedRefreshTokenRepository.save(InvalidatedRefreshToken.builder()
+                .jti(jti)
+                .expiresAt(jwtTokenProvider.getExpirationLocalDateTime(refreshToken))
+                .build());
+    }
+
+    public AuthenticationResponse refreshToken(RefreshTokenRequest request) {
+        String provided = request.getRefreshToken();
+        if (!jwtTokenProvider.validateRefreshToken(provided)) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+        String jti = jwtTokenProvider.getJwtId(provided);
+        if (jti == null || jti.isBlank() || invalidatedRefreshTokenRepository.existsByJti(jti)) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+        String email = jwtTokenProvider.getUsernameFromJWT(provided);
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        String newAccessToken = jwtTokenProvider.generateToken(email);
+        boolean requireOnboard = "PENDING_ONBOARD".equals(user.getStatus());
+
+        return AuthenticationResponse.builder()
+                .token(newAccessToken)
+                .refreshToken(provided)
+                .authenticated(true)
+                .requireOnboard(requireOnboard)
+                .build();
     }
 
     @Transactional
@@ -149,10 +204,12 @@ public class AuthenticationService {
             }
         }
 
-        String fcarToken = jwtTokenProvider.generateToken(user.getEmail());
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
 
         return AuthenticationResponse.builder()
-                .token(fcarToken)
+                .token(accessToken)
+                .refreshToken(refreshToken)
                 .authenticated(true)
                 .requireOnboard(requireOnboard)
                 .build();

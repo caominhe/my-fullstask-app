@@ -4,6 +4,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
@@ -23,6 +24,7 @@ public class FinanceController {
     private final FinanceService financeService;
 
     @PostMapping("/payments")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<PaymentRes> processPayment(@RequestBody @Valid PaymentProcessReq request) {
         return ApiResponse.<PaymentRes>builder()
                 .result(financeService.processPayment(request))
@@ -30,6 +32,7 @@ public class FinanceController {
     }
 
     @GetMapping("/contracts/{contractNo}/payments")
+    @PreAuthorize("hasAnyRole('SALES', 'CUSTOMER')")
     public ApiResponse<List<PaymentRes>> getPaymentsByContract(@PathVariable String contractNo) {
         return ApiResponse.<List<PaymentRes>>builder()
                 .result(financeService.getPaymentsByContract(contractNo))
@@ -37,6 +40,7 @@ public class FinanceController {
     }
 
     @PostMapping("/contracts/{contractNo}/handover")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<HandoverRes> initHandover(@PathVariable String contractNo) {
         return ApiResponse.<HandoverRes>builder()
                 .result(financeService.initHandover(contractNo))
@@ -44,6 +48,7 @@ public class FinanceController {
     }
 
     @PutMapping("/contracts/{contractNo}/handover")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<HandoverRes> updateHandover(
             @PathVariable String contractNo, @RequestBody @Valid HandoverUpdateReq request) {
         return ApiResponse.<HandoverRes>builder()

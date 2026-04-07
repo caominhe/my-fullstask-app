@@ -1,12 +1,16 @@
 import AppRoutes from "./routes/AppRoutes";
-import { CssBaseline } from "@mui/material"; // Reset CSS chuẩn của MUI
+import { CssBaseline, ThemeProvider } from "@mui/material";
+import { appTheme } from "./theme/theme";
+import { NotifyProvider } from "./contexts/NotifyContext";
 
 function App() {
   return (
-    <>
-      <CssBaseline />
-      <AppRoutes />
-    </>
+    <ThemeProvider theme={appTheme}>
+      <NotifyProvider>
+        <CssBaseline />
+        <AppRoutes />
+      </NotifyProvider>
+    </ThemeProvider>
   );
 }
 export default App;

@@ -2,6 +2,7 @@ package com.fcar.be.core.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -35,18 +36,19 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // 3. Cấu hình phân quyền cho các API
-                .authorizeHttpRequests(
-                        auth -> auth.requestMatchers(
-                                        "/auth/**", // Cho phép API login hệ thống và login Google
-                                        // (/auth/google/exchange)
-                                        "/users/register", // Cho phép đăng ký chay (nếu bạn vẫn giữ API này)
-                                        "/swagger-ui/**", // Cho phép xem tài liệu API
-                                        "/v3/api-docs/**")
-                                .permitAll()
-                                .anyRequest()
-                                .authenticated() // Mọi API khác (Bao gồm cả /users/onboard) đều bắt buộc phải có JWT
-                        // Token
-                        )
+                .authorizeHttpRequests(auth -> auth
+                        // Xác thực & tài liệu (/auth/** gồm /auth/login, /auth/refresh — gọi refresh khi access JWT hết
+                        // hạn)
+                        .requestMatchers("/auth/**", "/users/register", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
+                        // Khách vãng lai: form lái thử / tư vấn (chỉ POST)
+                        .requestMatchers(HttpMethod.POST, "/leads")
+                        .permitAll()
+                        // Khách vãng lai: xem danh sách / chi tiết xe (chỉ GET)
+                        .requestMatchers(HttpMethod.GET, "/cars", "/cars/**")
+                        .permitAll()
+                        .anyRequest()
+                        .authenticated())
 
                 // 4. Thêm bộ lọc JWT vào trước bộ lọc xác thực mặc định
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -4,6 +4,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
@@ -22,6 +23,7 @@ public class CarController {
     private final CarService carService;
 
     @PostMapping("/import")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CarDetailRes> importCar(@RequestBody @Valid CarImportReq request) {
         return ApiResponse.<CarDetailRes>builder()
                 .result(carService.importCar(request))
@@ -43,6 +45,7 @@ public class CarController {
     }
 
     @PutMapping("/{vin}/transfer")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<CarDetailRes> transferCar(@PathVariable String vin, @RequestBody @Valid CarTransferReq request) {
         return ApiResponse.<CarDetailRes>builder()
                 .result(carService.transferCar(vin, request))
@@ -50,6 +53,7 @@ public class CarController {
     }
 
     @PutMapping("/{vin}/lock")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<CarDetailRes> lockCar(@PathVariable String vin) {
         return ApiResponse.<CarDetailRes>builder()
                 .result(carService.lockCar(vin))
@@ -57,6 +61,7 @@ public class CarController {
     }
 
     @PutMapping("/{vin}/sell")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<CarDetailRes> sellCar(@PathVariable String vin) {
         return ApiResponse.<CarDetailRes>builder()
                 .result(carService.sellCar(vin))

@@ -10,28 +10,32 @@ import {
   Alert,
 } from "@mui/material";
 import { getToken } from "../services/localStorageService";
+import { onboardUser, fetchMyInfo } from "../services/userService";
+import { useAuth } from "../contexts/AuthContext";
+import { getPostLoginPath } from "../utils/authRedirect";
+import { ROUTES } from "../constants/routes";
+import AuthHeroLayout from "../modules/common/AuthHeroLayout";
 
 export default function Onboard() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Kiểm tra xem user có token không, nếu không có thì đẩy về Login
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      navigate("/login");
+      navigate(ROUTES.LOGIN);
     }
   }, [navigate]);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
-    // Validate cơ bản
     if (!phone || !password) {
       setError("Vui lòng nhập đầy đủ Số điện thoại và Mật khẩu.");
       return;
@@ -46,68 +50,30 @@ export default function Onboard() {
     }
 
     setLoading(true);
-    const token = getToken();
-
-    // Gọi API cập nhật thông tin Onboard
-    fetch("http://localhost:8080/api/v1/users/onboard", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        phone: phone,
-        password: password,
-      }),
-    })
-      .then(async (response) => {
-    if (!response.ok) {
-      throw new Error("Cập nhật thông tin thất bại!");
+    try {
+      await onboardUser({ phone, password });
+      const token = getToken();
+      const profile = await fetchMyInfo();
+      login(token, profile);
+      navigate(getPostLoginPath(profile), { replace: true });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
     }
-    
-    // Đọc dữ liệu thô trước
-    const text = await response.text(); 
-    // Nếu có dữ liệu thì parse JSON, nếu rỗng thì trả về object rỗng
-    return text ? JSON.parse(text) : {}; 
-  })
-      .then((data) => {
-        // Cập nhật thành công, chuyển hướng về trang chủ
-        console.log("Onboard thành công:", data);
-        navigate("/");
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
   };
 
   return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      height="100vh"
-      bgcolor={"#f0f2f5"}
-    >
-      <Card
-        sx={{
-          minWidth: 300,
-          maxWidth: 450,
-          boxShadow: 4,
-          borderRadius: 4,
-          padding: 4,
-        }}
-      >
+    <AuthHeroLayout>
+      <Card sx={{ minWidth: 300, maxWidth: 450, boxShadow: 6, borderRadius: 2, p: 1, bgcolor: "rgba(255,255,255,0.98)" }}>
         <CardContent>
           <Typography variant="h5" component="h1" gutterBottom fontWeight="bold" align="center">
             Hoàn tất thiết lập
           </Typography>
-          <Typography variant="body2" color="textSecondary" align="center" sx={{ mb: 3 }}>
-            Tài khoản Google của bạn đã được kết nối. Vui lòng thiết lập mật khẩu và số điện thoại để hoàn tất đăng ký.
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+            Tài khoản Google của bạn đã được kết nối. Vui lòng thiết lập mật khẩu và số điện thoại để hoàn tất đăng
+            ký.
           </Typography>
 
           {error && (
@@ -160,6 +126,6 @@ export default function Onboard() {
           </Box>
         </CardContent>
       </Card>
-    </Box>
+    </AuthHeroLayout>
   );
 }

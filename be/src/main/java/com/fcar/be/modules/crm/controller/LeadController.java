@@ -4,6 +4,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
@@ -27,6 +28,7 @@ public class LeadController {
     }
 
     @PutMapping("/{leadId}/assign/{salesId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES')")
     public ApiResponse<LeadRes> assignSales(@PathVariable Long leadId, @PathVariable Long salesId) {
         return ApiResponse.<LeadRes>builder()
                 .result(leadService.assignSales(leadId, salesId))
@@ -34,6 +36,7 @@ public class LeadController {
     }
 
     @GetMapping("/sales/{salesId}")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<List<LeadRes>> getLeadsBySales(@PathVariable Long salesId) {
         return ApiResponse.<List<LeadRes>>builder()
                 .result(leadService.getLeadsBySales(salesId))

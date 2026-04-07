@@ -1,5 +1,6 @@
 package com.fcar.be.modules.marketing.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
@@ -18,6 +19,7 @@ public class VoucherController {
 
     // Khách hàng tự thu thập mã giảm giá (Claim)
     @PostMapping("/{code}/claim")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<VoucherRes> claimVoucher(@PathVariable String code) {
         Long userId = SecurityUtils.getCurrentUserId()
                 .orElseThrow(() -> new AppException(com.fcar.be.core.exception.ErrorCode.UNAUTHENTICATED));

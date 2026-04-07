@@ -30,6 +30,7 @@ public enum ErrorCode {
             1011,
             "Không đổi được mã Google (token). Kiểm tra Redirect URI khớp http://localhost:3000/authenticate, Client ID/Secret, và chỉ dùng mã một lần.",
             HttpStatus.BAD_REQUEST),
+    INVALID_TOKEN(1012, "Invalid or expired token", HttpStatus.UNAUTHORIZED),
 
     // ==============================================================================
     // [MODULE 1] INVENTORY: Kho xe & Master Data (2xxx)

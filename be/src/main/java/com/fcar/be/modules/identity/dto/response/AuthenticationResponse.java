@@ -9,7 +9,11 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AuthenticationResponse {
+    /** Access token (JWT). */
     String token;
+    /** Refresh token (JWT, TTL dài hơn). */
+    String refreshToken;
+
     boolean authenticated;
     boolean requireOnboard;
 }

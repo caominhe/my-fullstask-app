@@ -2,6 +2,7 @@ package com.fcar.be.modules.sales.controller;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
@@ -22,6 +23,7 @@ public class SalesController {
     private final SalesService salesService;
 
     @PostMapping("/quotations")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<QuotationRes> createQuotation(@RequestBody @Valid QuotationCreateReq request) {
         // Lấy ID khách hàng đang thao tác từ Token
         Long customerId = SecurityUtils.getCurrentUserId()
@@ -32,6 +34,7 @@ public class SalesController {
     }
 
     @PostMapping("/quotations/{quotationId}/contracts")
+    @PreAuthorize("hasRole('SALES')")
     public ApiResponse<ContractRes> createContract(@PathVariable Long quotationId) {
         // Lấy ID Sales đang thao tác từ Token
         Long salesId = SecurityUtils.getCurrentUserId()
@@ -42,6 +45,7 @@ public class SalesController {
     }
 
     @PutMapping("/quotations/{id}/accept")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<QuotationRes> acceptQuotation(@PathVariable Long id) {
         return ApiResponse.<QuotationRes>builder()
                 .result(salesService.acceptQuotation(id))
