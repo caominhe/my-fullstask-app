@@ -31,9 +31,12 @@ public class CarController {
     }
 
     @GetMapping
-    public ApiResponse<List<CarDetailRes>> getAllCars() {
+    public ApiResponse<List<CarDetailRes>> getAllCars(
+            @RequestParam(required = false) Long showroomId,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) String model) {
         return ApiResponse.<List<CarDetailRes>>builder()
-                .result(carService.getAllCars())
+                .result(carService.getAllCars(showroomId, brand, model))
                 .build();
     }
 

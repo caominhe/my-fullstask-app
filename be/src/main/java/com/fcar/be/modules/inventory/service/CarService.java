@@ -9,7 +9,7 @@ import com.fcar.be.modules.inventory.dto.response.CarDetailRes;
 public interface CarService {
     CarDetailRes importCar(CarImportReq request);
 
-    List<CarDetailRes> getAllCars();
+    List<CarDetailRes> getAllCars(Long showroomId, String brand, String model);
 
     CarDetailRes getCarByVin(String vin);
 

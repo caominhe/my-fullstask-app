@@ -40,6 +40,11 @@ public class Car {
     @Column(name = "showroom_id")
     Long showroomId;
 
+    /** Chỉ đọc — cùng cột `showroom_id`, dùng để join tên showroom khi trả API. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "showroom_id", insertable = false, updatable = false)
+    Showroom showroom;
+
     // --- CẬP NHẬT TẠI ĐÂY ---
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

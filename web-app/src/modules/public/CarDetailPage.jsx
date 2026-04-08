@@ -22,6 +22,20 @@ function formatPrice(v) {
   return new Intl.NumberFormat("vi-VN").format(n) + " ₫";
 }
 
+const CAR_STATUS_LABELS = {
+  IN_WAREHOUSE: "Kho tổng",
+  AVAILABLE: "Sẵn sàng (đại lý)",
+  LOCKED: "Đã khóa (HĐ)",
+  SOLD: "Đã bán",
+};
+
+function statusChipColor(status) {
+  if (status === "AVAILABLE") return "success";
+  if (status === "LOCKED") return "warning";
+  if (status === "SOLD") return "default";
+  return "primary";
+}
+
 export default function CarDetailPage() {
   const { vin } = useParams();
   const [car, setCar] = useState(null);
@@ -81,15 +95,17 @@ export default function CarDetailPage() {
             />
           </Grid>
           <Grid item xs={12} md={5}>
-            <Typography variant="overline" color="text.secondary">
-              GET /cars/{`{vin}`}
-            </Typography>
             <Typography variant="h4" component="h1" fontWeight={800} gutterBottom>
               {title || "Xe FCAR"}
             </Typography>
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
               <Chip label={`VIN: ${car.vin}`} size="small" />
-              <Chip label={car.status || "—"} size="small" color="primary" variant="outlined" />
+              <Chip
+                label={CAR_STATUS_LABELS[car.status] || car.status || "—"}
+                size="small"
+                color={statusChipColor(car.status)}
+                variant="outlined"
+              />
             </Box>
             <Typography variant="h5" color="primary.main" fontWeight={700} gutterBottom>
               {formatPrice(car.basePrice)}
@@ -99,7 +115,14 @@ export default function CarDetailPage() {
               {[
                 ["Màu sơn", car.color],
                 ["Số máy", car.engineNumber],
-                ["Showroom ID", car.showroomId ?? "—"],
+                [
+                  "Showroom",
+                  car.showroomName
+                    ? `${car.showroomName}${car.showroomId != null ? ` (ID ${car.showroomId})` : ""}`
+                    : car.showroomId != null
+                      ? `ID ${car.showroomId}`
+                      : "—",
+                ],
                 ["Master data ID", car.masterDataId ?? "—"],
               ].map(([k, v]) => (
                 <Grid item xs={12} key={k}>

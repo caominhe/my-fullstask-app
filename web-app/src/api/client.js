@@ -45,7 +45,13 @@ export async function apiRequest(path, options = {}) {
 
   if (!res.ok) {
     const msg = data?.message || res.statusText || "Request failed";
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    const err = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    if (data?.code != null) err.code = data.code;
+    if (data?.field) err.field = data.field;
+    if (data?.fieldErrors != null && typeof data.fieldErrors === "object") {
+      err.fieldErrors = { ...data.fieldErrors };
+    }
+    throw err;
   }
 
   return data;
@@ -55,4 +61,5 @@ export const apiClient = {
   get: (path, opts) => apiRequest(path, { ...opts, method: "GET" }),
   post: (path, body, opts) => apiRequest(path, { ...opts, method: "POST", body }),
   put: (path, body, opts) => apiRequest(path, { ...opts, method: "PUT", body }),
+  delete: (path, opts) => apiRequest(path, { ...opts, method: "DELETE" }),
 };

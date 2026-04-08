@@ -113,7 +113,7 @@ public class SalesServiceImpl implements SalesService {
         }
 
         // 3. LUỒNG 4: TỰ ĐỘNG KHÓA XE (LOCK CAR)
-        // Gọi sang module Inventory để chuyển xe từ IN_WAREHOUSE sang LOCKED.
+        // Gọi sang module Inventory để chuyển xe từ IN_WAREHOUSE/AVAILABLE sang LOCKED.
         // Nếu xe đã bị Sales khác khóa, CarService sẽ throw Exception và giao dịch này sẽ bị Rollback.
         carService.lockCar(quotation.getCarVin());
 

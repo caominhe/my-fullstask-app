@@ -2,6 +2,7 @@
 package com.fcar.be.core.common.dto;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -21,6 +22,12 @@ public class ApiResponse<T> {
 
     String message;
     T result;
+
+    /** Tên field lỗi đầu tiên (Bean Validation) — tiện cho client đơn giản */
+    String field;
+
+    /** Mọi lỗi theo field: property name → message đã dịch (ErrorCode) */
+    Map<String, String> fieldErrors;
 
     @Builder.Default
     LocalDateTime timestamp = LocalDateTime.now();

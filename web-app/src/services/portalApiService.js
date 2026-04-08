@@ -7,9 +7,28 @@ export const portalApi = {
   // Admin
   getUsers: () => apiClient.get("/users"),
   updateUserRoles: (userId, roleNames) => apiClient.put(`/users/${userId}/roles`, { roleNames }),
-  getCars: () => apiClient.get("/cars"),
+  getCars: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.showroomId != null && params.showroomId !== "") q.append("showroomId", String(params.showroomId));
+    if (params.brand) q.append("brand", params.brand);
+    if (params.model) q.append("model", params.model);
+    return apiClient.get(`/cars${q.toString() ? `?${q.toString()}` : ""}`);
+  },
   importCar: (payload) => apiClient.post("/cars/import", payload),
-  transferCar: (vin, showroomId) => apiClient.put(`/cars/${encodeURIComponent(vin)}/transfer`, { showroomId }),
+  transferCar: (vin, payload) => apiClient.put(`/cars/${encodeURIComponent(vin)}/transfer`, payload),
+  createMasterData: (payload) => apiClient.post("/master-data", payload),
+  getMasterData: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.brand) q.append("brand", params.brand);
+    if (params.model) q.append("model", params.model);
+    return apiClient.get(`/master-data${q.toString() ? `?${q.toString()}` : ""}`);
+  },
+  updateMasterData: (id, payload) => apiClient.put(`/master-data/${id}`, payload),
+  deleteMasterData: (id) => apiClient.delete(`/master-data/${id}`),
+  createShowroom: (payload) => apiClient.post("/showrooms", payload),
+  getShowrooms: (keyword) => apiClient.get(`/showrooms${keyword ? `?keyword=${encodeURIComponent(keyword)}` : ""}`),
+  updateShowroom: (id, payload) => apiClient.put(`/showrooms/${id}`, payload),
+  deleteShowroom: (id) => apiClient.delete(`/showrooms/${id}`),
   assignLead: (leadId, salesId) => apiClient.put(`/leads/${leadId}/assign/${salesId}`),
   createCampaign: (payload) => apiClient.post("/campaigns", payload),
   generateCampaignVouchers: (campaignId, { quantity, prefix, expiredAt }) => {

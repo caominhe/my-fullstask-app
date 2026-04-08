@@ -36,10 +36,40 @@ public enum ErrorCode {
     // [MODULE 1] INVENTORY: Kho xe & Master Data (2xxx)
     // ==============================================================================
     CAR_NOT_FOUND(2001, "Car with this VIN not found", HttpStatus.NOT_FOUND),
-    CAR_EXISTED(2002, "Car with this VIN already exists in the system", HttpStatus.BAD_REQUEST),
-    ENGINE_NUMBER_EXISTED(2003, "Car with this engine number already exists", HttpStatus.BAD_REQUEST),
+    CAR_EXISTED(2002, "VIN này đã tồn tại trong hệ thống.", HttpStatus.BAD_REQUEST),
+    ENGINE_NUMBER_EXISTED(2003, "Số máy này đã tồn tại.", HttpStatus.BAD_REQUEST),
     MASTER_DATA_NOT_FOUND(2004, "Master data (Car model) not found", HttpStatus.NOT_FOUND),
     CAR_INVALID_STATUS(2005, "Car is not in a valid status for this action", HttpStatus.BAD_REQUEST),
+    SHOWROOM_NOT_FOUND(2006, "Showroom not found", HttpStatus.NOT_FOUND),
+    MASTER_DATA_IN_USE(2007, "Master data is referenced by cars and cannot be deleted", HttpStatus.BAD_REQUEST),
+    SHOWROOM_IN_USE(2008, "Showroom is referenced by data and cannot be deleted", HttpStatus.BAD_REQUEST),
+    INVALID_TRANSFER_TARGET(2009, "Provide showroomId or showroomName for transfer", HttpStatus.BAD_REQUEST),
+
+    /** Master data — validation theo từng field */
+    MASTER_DATA_BRAND_REQUIRED(2010, "Thiếu hãng (brand).", HttpStatus.BAD_REQUEST),
+    MASTER_DATA_BRAND_TOO_LONG(2011, "Hãng (brand) vượt quá độ dài cho phép.", HttpStatus.BAD_REQUEST),
+    MASTER_DATA_MODEL_REQUIRED(2012, "Thiếu dòng xe (model).", HttpStatus.BAD_REQUEST),
+    MASTER_DATA_MODEL_TOO_LONG(2013, "Dòng xe (model) vượt quá độ dài cho phép.", HttpStatus.BAD_REQUEST),
+    MASTER_DATA_VERSION_REQUIRED(2014, "Thiếu phiên bản (version).", HttpStatus.BAD_REQUEST),
+    MASTER_DATA_VERSION_TOO_LONG(2015, "Phiên bản (version) vượt quá độ dài cho phép.", HttpStatus.BAD_REQUEST),
+    MASTER_DATA_BASE_PRICE_REQUIRED(2016, "Thiếu giá niêm yết (base price).", HttpStatus.BAD_REQUEST),
+    MASTER_DATA_BASE_PRICE_INVALID(2017, "Giá niêm yết phải lớn hơn 0.", HttpStatus.BAD_REQUEST),
+
+    /** Showroom — validation */
+    SHOWROOM_NAME_REQUIRED(2018, "Thiếu tên showroom.", HttpStatus.BAD_REQUEST),
+    SHOWROOM_NAME_TOO_LONG(2019, "Tên showroom vượt quá độ dài cho phép.", HttpStatus.BAD_REQUEST),
+    SHOWROOM_ADDRESS_TOO_LONG(2020, "Địa chỉ showroom vượt quá độ dài cho phép.", HttpStatus.BAD_REQUEST),
+
+    /** Nhập xe (import) — validation */
+    CAR_VIN_REQUIRED(2021, "Thiếu số VIN.", HttpStatus.BAD_REQUEST),
+    CAR_VIN_LENGTH_INVALID(2022, "VIN phải đúng 17 ký tự.", HttpStatus.BAD_REQUEST),
+    CAR_VIN_FORMAT_INVALID(
+            2023, "VIN không hợp lệ: chỉ chữ số và chữ cái (không dùng I, O, Q).", HttpStatus.BAD_REQUEST),
+    CAR_MASTER_DATA_ID_REQUIRED(2024, "Chưa chọn dòng xe (master data).", HttpStatus.BAD_REQUEST),
+    CAR_ENGINE_NUMBER_REQUIRED(2025, "Thiếu số máy.", HttpStatus.BAD_REQUEST),
+    CAR_ENGINE_NUMBER_TOO_LONG(2026, "Số máy vượt quá độ dài cho phép.", HttpStatus.BAD_REQUEST),
+    CAR_COLOR_REQUIRED(2027, "Thiếu màu xe.", HttpStatus.BAD_REQUEST),
+    CAR_COLOR_TOO_LONG(2028, "Tên màu vượt quá độ dài cho phép.", HttpStatus.BAD_REQUEST),
 
     // ==============================================================================
     // [MODULE 2] MARKETING: Chiến dịch & Voucher (3xxx)

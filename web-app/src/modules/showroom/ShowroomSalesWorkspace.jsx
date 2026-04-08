@@ -37,7 +37,7 @@ export default function ShowroomSalesWorkspace() {
     })();
   }, []);
 
-  const available = allCars.filter((c) => (c.status || "") === "IN_WAREHOUSE");
+  const available = allCars.filter((c) => (c.status || "") === "AVAILABLE");
   const displayRows = available.length ? available : allCars;
 
   const run = async (fn, ok) => {
@@ -90,7 +90,7 @@ export default function ShowroomSalesWorkspace() {
                     title="Không có xe trong kho để chọn"
                     description={
                       available.length === 0 && allCars.length > 0
-                        ? "Hiện không có xe ở trạng thái IN_WAREHOUSE. Kiểm tra kho tổng hoặc trạng thái xe."
+                        ? "Hiện không có xe ở trạng thái AVAILABLE (đã điều chuyển từ kho tổng). Kiểm tra điều chuyển đại lý hoặc trạng thái xe."
                         : "Chưa có dữ liệu tồn kho. Liên hệ kho tổng để nhập xe."
                     }
                   />

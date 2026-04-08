@@ -19,6 +19,14 @@ CREATE TABLE roles_permissions (
     FOREIGN KEY (permission_name) REFERENCES permissions(name) ON DELETE CASCADE
 ) COMMENT='Bảng trung gian Role <-> Permission';
 
+CREATE TABLE showrooms (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL COMMENT 'Tên đại lý/Showroom',
+    address VARCHAR(255) COMMENT 'Địa chỉ',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đánh dấu xóa mềm',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) COMMENT='Bảng quản lý danh sách các chi nhánh Showroom';
+
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(100) NOT NULL UNIQUE COMMENT 'Email đăng nhập (bắt buộc, không trùng)',
@@ -28,9 +36,11 @@ CREATE TABLE users (
     phone VARCHAR(20) UNIQUE COMMENT 'Số điện thoại',
     provider VARCHAR(20) COMMENT 'Nguồn đăng nhập: LOCAL, GOOGLE',
     showroom_id BIGINT COMMENT 'ID của showroom người này làm việc (Null nếu là Admin/Customer)',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đánh dấu xóa mềm',
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'Trạng thái: ACTIVE, INACTIVE, BANNED',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (showroom_id) REFERENCES showrooms(id)
 ) COMMENT='Bảng lưu trữ thông tin người dùng';
 
 CREATE TABLE user_roles (
@@ -50,20 +60,29 @@ CREATE TABLE master_data (
     model VARCHAR(50) NOT NULL COMMENT 'Dòng xe (VD: Camry, Ranger)',
     version VARCHAR(50) NOT NULL COMMENT 'Phiên bản (VD: 2.0Q, Wildtrak)',
     base_price DECIMAL(15, 2) NOT NULL COMMENT 'Giá niêm yết',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đánh dấu xóa mềm',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) COMMENT='Bảng danh mục các loại xe';
 
 CREATE TABLE cars (
-    vin VARCHAR(17) PRIMARY KEY COMMENT 'Số khung (VIN) - Định danh duy nhất của xe',
+    vin CHAR(17) PRIMARY KEY COMMENT 'Số khung (VIN) - Định danh duy nhất của xe',
     master_data_id BIGINT NOT NULL COMMENT 'Khóa ngoại tham chiếu dòng xe',
     engine_number VARCHAR(50) NOT NULL UNIQUE COMMENT 'Số máy (không trùng)',
     color VARCHAR(30) NOT NULL COMMENT 'Màu sắc xe',
     showroom_id BIGINT COMMENT 'ID của showroom đang giữ xe (Null nếu ở kho tổng)',
-    status VARCHAR(20) NOT NULL DEFAULT 'IN_WAREHOUSE' COMMENT 'Trạng thái: IN_WAREHOUSE, AVAILABLE, LOCKED, RESERVED, SOLD',
+    status VARCHAR(20) NOT NULL DEFAULT 'IN_WAREHOUSE' COMMENT 'Trạng thái: IN_WAREHOUSE, AVAILABLE, LOCKED, SOLD',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đánh dấu xóa mềm',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (master_data_id) REFERENCES master_data(id)
+    FOREIGN KEY (master_data_id) REFERENCES master_data(id),
+    FOREIGN KEY (showroom_id) REFERENCES showrooms(id)
 ) COMMENT='Bảng quản lý từng chiếc xe vật lý trong kho';
+
+-- Gộp logic migration V2/V3: sau mọi thao tác seed (nếu có), đồng bộ xe đã gán showroom → AVAILABLE
+UPDATE cars
+SET status = 'AVAILABLE'
+WHERE showroom_id IS NOT NULL
+  AND status = 'IN_WAREHOUSE';
 
 -- ==============================================================================
 -- MODULE 2: MARKETING (Sự kiện, Khuyến mãi & Voucher)
@@ -85,7 +104,9 @@ CREATE TABLE events (
     end_date DATETIME NOT NULL COMMENT 'Ngày kết thúc',
     showroom_id BIGINT COMMENT 'Áp dụng cho showroom nào',
     campaign_id BIGINT COMMENT 'Chương trình khuyến mãi áp dụng (Tặng Voucher)',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đánh dấu xóa mềm',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (showroom_id) REFERENCES showrooms(id) ON DELETE SET NULL,
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE SET NULL
 ) COMMENT='Bảng quản lý sự kiện';
 
@@ -111,8 +132,10 @@ CREATE TABLE leads (
     showroom_id BIGINT COMMENT 'ID Showroom khách chọn lúc đăng ký',
     assigned_sales_id BIGINT COMMENT 'Nhân viên sales phụ trách',
     status VARCHAR(20) NOT NULL DEFAULT 'NEEDS_CONSULTATION' COMMENT 'Trạng thái: NEEDS_CONSULTATION, TEST_DRIVE_SCHEDULED, TEST_DRIVEN',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đánh dấu xóa mềm',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (showroom_id) REFERENCES showrooms(id) ON DELETE SET NULL,
     FOREIGN KEY (assigned_sales_id) REFERENCES users(id) ON DELETE SET NULL
 ) COMMENT='Bảng quản lý khách hàng tiềm năng (Lead)';
 
@@ -133,7 +156,7 @@ CREATE TABLE test_drives (
 CREATE TABLE quotations (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     lead_id BIGINT NOT NULL COMMENT 'Khách hàng nhận báo giá',
-    car_vin VARCHAR(17) NOT NULL COMMENT 'Số khung xe cụ thể',
+    car_vin CHAR(17) NOT NULL COMMENT 'Số khung xe cụ thể',
     voucher_code VARCHAR(50) COMMENT 'Mã voucher áp dụng',
     total_amount DECIMAL(15, 2) NOT NULL COMMENT 'Tổng tiền trước giảm giá',
     final_amount DECIMAL(15, 2) NOT NULL COMMENT 'Số tiền cuối cùng phải trả',
@@ -150,6 +173,7 @@ CREATE TABLE contracts (
     sales_id BIGINT NOT NULL COMMENT 'Sales chốt hợp đồng',
     signed_date DATETIME COMMENT 'Ngày ký hợp đồng',
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT 'Trạng thái: PENDING, SIGNED, COMPLETED, CANCELLED',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đánh dấu xóa mềm',
     FOREIGN KEY (quotation_id) REFERENCES quotations(id),
     FOREIGN KEY (sales_id) REFERENCES users(id)
 ) COMMENT='Bảng quản lý hợp đồng mua bán';
@@ -181,7 +205,7 @@ CREATE TABLE handovers (
 -- ==============================================================================
 CREATE TABLE warranty_books (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    car_vin VARCHAR(17) NOT NULL UNIQUE COMMENT 'Bảo hành cho xe nào',
+    car_vin CHAR(17) NOT NULL UNIQUE COMMENT 'Bảo hành cho xe nào',
     license_plate VARCHAR(20) NOT NULL COMMENT 'Biển số',
     start_date DATE NOT NULL COMMENT 'Ngày bắt đầu bảo hành',
     end_date DATE NOT NULL COMMENT 'Ngày kết thúc bảo hành',
@@ -206,6 +230,14 @@ INSERT INTO roles (name, description) VALUES
 ('SALES', 'Nhân viên tư vấn bán hàng'),
 ('CUSTOMER', 'Khách hàng sử dụng dịch vụ');
 
-INSERT INTO master_data (brand, model, version, base_price) VALUES
-('Toyota', 'Camry', '2.0Q', 1050000000.00),
-('Ford', 'Ranger', 'Wildtrak 4x4', 979000000.00);
+-- Blacklist refresh token JWT sau logout (jti = JWT ID)
+CREATE TABLE invalidated_refresh_tokens (
+    jti VARCHAR(64) PRIMARY KEY COMMENT 'JWT ID (claim jti) của refresh token đã thu hồi',
+    expires_at DATETIME NOT NULL COMMENT 'Thời điểm JWT gốc hết hạn — dùng để dọn bản ghi cũ',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) COMMENT = 'Refresh token JWT đã logout / bị thu hồi';
+
+
+CREATE INDEX idx_car_status ON cars(status);
+CREATE INDEX idx_lead_status ON leads(status);
+CREATE INDEX idx_contract_status ON contracts(status);

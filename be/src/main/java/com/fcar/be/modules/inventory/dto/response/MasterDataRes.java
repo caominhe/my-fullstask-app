@@ -11,21 +11,11 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CarDetailRes {
-    String vin;
-    String engineNumber;
-    String color;
-    Long showroomId;
-    /** Tên showroom (null nếu xe còn ở kho tổng). */
-    String showroomName;
-
-    String status;
-    LocalDateTime createdAt;
-
-    // Flattened từ MasterData để Frontend dễ hiển thị
-    Long masterDataId;
+public class MasterDataRes {
+    Long id;
     String brand;
     String model;
     String version;
     BigDecimal basePrice;
+    LocalDateTime createdAt;
 }

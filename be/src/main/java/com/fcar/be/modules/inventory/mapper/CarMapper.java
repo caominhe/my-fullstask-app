@@ -20,5 +20,6 @@ public interface CarMapper {
     @Mapping(source = "masterData.model", target = "model")
     @Mapping(source = "masterData.version", target = "version")
     @Mapping(source = "masterData.basePrice", target = "basePrice")
+    @Mapping(source = "showroom.name", target = "showroomName")
     CarDetailRes toCarDetailRes(Car car);
 }

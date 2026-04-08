@@ -1,6 +1,5 @@
 package com.fcar.be.modules.inventory.entity;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
@@ -18,24 +17,18 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-@Table(name = "master_data")
+@Table(name = "showrooms")
 @EntityListeners(AuditingEntityListener.class)
-public class MasterData {
+public class Showroom {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
     @Column(nullable = false)
-    String brand;
+    String name;
 
-    @Column(nullable = false)
-    String model;
-
-    @Column(nullable = false)
-    String version;
-
-    @Column(name = "base_price", nullable = false)
-    BigDecimal basePrice;
+    @Column
+    String address;
 
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
