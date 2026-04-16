@@ -2,6 +2,7 @@ package com.fcar.be.modules.inventory.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -15,6 +16,9 @@ public class CarDetailRes {
     String vin;
     String engineNumber;
     String color;
+    String imageUrl;
+    List<String> imageUrls;
+    String imageFolderUrl;
     Long showroomId;
     /** Tên showroom (null nếu xe còn ở kho tổng). */
     String showroomName;
@@ -28,4 +32,5 @@ public class CarDetailRes {
     String model;
     String version;
     BigDecimal basePrice;
+    BigDecimal listedPrice;
 }

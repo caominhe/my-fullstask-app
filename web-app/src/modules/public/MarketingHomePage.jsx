@@ -1,6 +1,7 @@
 import { Box, Button, Container, Grid, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "../../constants/routes";
+import CarCatalogPage from "./CarCatalogPage";
 
 export default function MarketingHomePage() {
   const navigate = useNavigate();
@@ -44,10 +45,13 @@ export default function MarketingHomePage() {
                 Khám phá tồn kho, nhận báo giá minh bạch và ưu đãi sự kiện trong một hệ sinh thái duy nhất.
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
-                <Button variant="contained" color="secondary" size="large" onClick={() => navigate(ROUTES.CARS_PUBLIC)}>
-                  Xem danh sách xe
-                </Button>
-                <Button variant="outlined" color="inherit" size="large" onClick={() => navigate(ROUTES.TEST_DRIVE)} sx={{ borderColor: "rgba(255,255,255,0.8)", color: "#fff" }}>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  size="large"
+                  onClick={() => navigate(ROUTES.TEST_DRIVE)}
+                  sx={{ borderColor: "rgba(255,255,255,0.8)", color: "#fff" }}
+                >
                   Đăng ký lái thử
                 </Button>
               </Box>
@@ -88,6 +92,10 @@ export default function MarketingHomePage() {
           </Box>
         </Grid>
       </Grid>
+
+      <Box sx={{ mt: 4 }}>
+        <CarCatalogPage embedded />
+      </Box>
     </Box>
   );
 }

@@ -9,6 +9,8 @@ import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import com.fcar.be.modules.marketing.enums.CampaignRegion;
+import com.fcar.be.modules.marketing.enums.CampaignTargetScope;
 import com.fcar.be.modules.marketing.enums.DiscountType;
 
 import lombok.*;
@@ -37,6 +39,21 @@ public class Campaign {
 
     @Column(name = "discount_value", nullable = false)
     BigDecimal discountValue;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_scope", nullable = false)
+    @Builder.Default
+    CampaignTargetScope targetScope = CampaignTargetScope.ALL;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_region", length = 20)
+    CampaignRegion targetRegion;
+
+    @Column(name = "target_province", length = 100)
+    String targetProvince;
+
+    @Column(name = "target_showroom_id")
+    Long targetShowroomId;
 
     // --- CẬP NHẬT TẠI ĐÂY ---
     // Danh sách ID dòng xe được áp dụng khuyến mãi (Rỗng = áp dụng tất cả)

@@ -2,7 +2,7 @@ import { ROLES } from "../constants/roles";
 import { ROUTES } from "../constants/routes";
 
 /**
- * Điều hướng sau đăng nhập theo role (ưu tiên: ADMIN → SALES → CUSTOMER).
+ * Điều hướng sau đăng nhập theo role (ưu tiên: ADMIN → SHOWROOM → CUSTOMER).
  * @param {{ roles?: { name: string }[] } | null | undefined} user
  */
 export function getPostLoginPath(user) {
@@ -13,7 +13,7 @@ export function getPostLoginPath(user) {
   if (names.includes(ROLES.ADMIN)) {
     return ROUTES.ADMIN_HOME;
   }
-  if (names.includes(ROLES.SALES)) {
+  if (names.includes(ROLES.SHOWROOM)) {
     return ROUTES.SHOWROOM_HOME;
   }
   return ROUTES.PROFILE;

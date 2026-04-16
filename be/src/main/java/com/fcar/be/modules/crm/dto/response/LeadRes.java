@@ -13,11 +13,12 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class LeadRes {
     Long id;
+    Long userId;
     String fullName;
     String phone;
+    String interestedVin;
     LeadSource source;
     Long showroomId;
-    Long assignedSalesId;
     LeadStatus status;
     LocalDateTime createdAt;
 }

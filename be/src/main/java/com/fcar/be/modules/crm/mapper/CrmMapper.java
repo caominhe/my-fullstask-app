@@ -10,7 +10,6 @@ import com.fcar.be.modules.crm.entity.Lead;
 @Mapper(componentModel = "spring")
 public interface CrmMapper {
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "assignedSalesId", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     Lead toLead(LeadCreateReq req);

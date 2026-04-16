@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { ROUTES } from "../../constants/routes";
 import { portalApi } from "../../services/portalApiService";
-import { getCarHeroImage } from "../../utils/carPlaceholderImage";
+import { getCarHeroImage, getCarImageGallery } from "../../utils/carPlaceholderImage";
 
 function formatPrice(v) {
   if (v == null || v === "") return "—";
@@ -41,6 +41,7 @@ export default function CarDetailPage() {
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedImage, setSelectedImage] = useState("");
 
   useEffect(() => {
     if (!vin) return;
@@ -50,7 +51,12 @@ export default function CarDetailPage() {
       setError("");
       try {
         const data = await portalApi.getCarByVin(vin);
-        if (!cancelled) setCar(data?.result || null);
+        if (!cancelled) {
+          const nextCar = data?.result || null;
+          setCar(nextCar);
+          const images = getCarImageGallery(nextCar);
+          setSelectedImage(images[0] || "");
+        }
       } catch (e) {
         if (!cancelled) setError(e.message || "Không tải được thông tin xe.");
       } finally {
@@ -63,6 +69,8 @@ export default function CarDetailPage() {
   }, [vin]);
 
   const title = car ? [car.brand, car.model, car.version].filter(Boolean).join(" ") : "";
+  const carImages = getCarImageGallery(car);
+  const heroImage = selectedImage || getCarHeroImage(car);
 
   return (
     <Box>
@@ -89,10 +97,32 @@ export default function CarDetailPage() {
           <Grid item xs={12} md={7}>
             <Box
               component="img"
-              src={getCarHeroImage(car)}
+              src={heroImage}
               alt={title}
               sx={{ width: "100%", borderRadius: 2, maxHeight: 420, objectFit: "cover" }}
             />
+            {carImages.length > 1 ? (
+              <Box sx={{ mt: 1.5, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                {carImages.map((img) => (
+                  <Box
+                    key={img}
+                    component="img"
+                    src={img}
+                    alt={title}
+                    onClick={() => setSelectedImage(img)}
+                    sx={{
+                      width: 90,
+                      height: 64,
+                      objectFit: "cover",
+                      borderRadius: 1,
+                      cursor: "pointer",
+                      border: img === heroImage ? "2px solid" : "1px solid",
+                      borderColor: img === heroImage ? "primary.main" : "divider",
+                    }}
+                  />
+                ))}
+              </Box>
+            ) : null}
           </Grid>
           <Grid item xs={12} md={5}>
             <Typography variant="h4" component="h1" fontWeight={800} gutterBottom>

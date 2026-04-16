@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.fcar.be.core.common.dto.ApiResponse;
+import com.fcar.be.modules.identity.dto.request.UpdateMyProfileRequest;
 import com.fcar.be.modules.identity.dto.request.UpdateUserRolesRequest;
 import com.fcar.be.modules.identity.dto.request.UserCreationRequest;
 import com.fcar.be.modules.identity.dto.request.UserOnboardRequest;
@@ -43,7 +44,7 @@ public class UserController {
     public ApiResponse<UserResponse> updateUserRoles(
             @PathVariable Long id, @RequestBody @Valid UpdateUserRolesRequest request) {
         return ApiResponse.<UserResponse>builder()
-                .result(userService.updateUserRoles(id, request.getRoleNames()))
+                .result(userService.updateUserRoles(id, request.getRoleNames(), request.getShowroomId()))
                 .build();
     }
 
@@ -58,6 +59,13 @@ public class UserController {
     public ApiResponse<UserResponse> getMyInfo() {
         return ApiResponse.<UserResponse>builder()
                 .result(userService.getMyInfo())
+                .build();
+    }
+
+    @PutMapping("/my-info")
+    public ApiResponse<UserResponse> updateMyInfo(@RequestBody @Valid UpdateMyProfileRequest request) {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.updateMyInfo(request))
                 .build();
     }
 }

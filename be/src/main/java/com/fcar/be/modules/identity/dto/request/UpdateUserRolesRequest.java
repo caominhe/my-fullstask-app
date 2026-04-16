@@ -14,7 +14,10 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UpdateUserRolesRequest {
 
-    /** Tên role khớp bảng {@code roles.name} (vd: ADMIN, SALES, CUSTOMER). */
+    /** Tên role khớp bảng {@code roles.name} (vd: ADMIN, SHOWROOM, CUSTOMER). */
     @NotEmpty(message = "roleNames must not be empty")
     Set<String> roleNames;
+
+    /** Bắt buộc khi roleNames chứa SHOWROOM. */
+    Long showroomId;
 }

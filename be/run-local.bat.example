@@ -1,0 +1,18 @@
+@echo off
+REM Sao chép file này thành run-local.bat, điền giá trị thật, KHÔNG commit run-local.bat (đã có trong .gitignore).
+REM --- Google OAuth2 ---
+set "GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com"
+set "GOOGLE_CLIENT_SECRET=YOUR_CLIENT_SECRET"
+REM --- Cloudinary ---
+set "CLOUDINARY_CLOUD_NAME=YOUR_CLOUD_NAME"
+set "CLOUDINARY_API_KEY=YOUR_API_KEY"
+set "CLOUDINARY_API_SECRET=YOUR_API_SECRET"
+set "CLOUDINARY_FOLDER=fcar-images"
+REM --- Bắt buộc (application.yaml) ---
+set "JWT_SECRET=YOUR_LONG_RANDOM_SECRET"
+set "SPRING_DATASOURCE_PASSWORD=YOUR_MYSQL_PASSWORD"
+REM Tuỳ chọn (mặc định trong YAML: root + jdbc localhost fcar_db)
+REM set "SPRING_DATASOURCE_USERNAME=root"
+REM set "SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/fcar_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8"
+cd /d "%~dp0"
+call mvnw.cmd spring-boot:run

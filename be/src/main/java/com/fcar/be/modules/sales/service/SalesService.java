@@ -1,13 +1,19 @@
 package com.fcar.be.modules.sales.service;
 
-import com.fcar.be.modules.sales.dto.request.QuotationCreateReq;
+import java.util.List;
+
+import com.fcar.be.modules.marketing.dto.response.VoucherRes;
+import com.fcar.be.modules.sales.dto.request.ContractCreateReq;
 import com.fcar.be.modules.sales.dto.response.ContractRes;
-import com.fcar.be.modules.sales.dto.response.QuotationRes;
 
 public interface SalesService {
-    QuotationRes createQuotation(QuotationCreateReq request, Long customerUserId);
+    ContractRes createContract(ContractCreateReq request, Long salesId);
 
-    ContractRes createContract(Long quotationId, Long salesId);
+    ContractRes confirmContractByCustomer(String contractNo);
 
-    QuotationRes acceptQuotation(Long quotationId);
+    ContractRes getContract(String contractNo);
+
+    List<ContractRes> getUnprocessedContractsForCurrentShowroom(Long salesUserId);
+
+    List<VoucherRes> getLeadCustomerVouchers(Long leadId, Long salesUserId);
 }

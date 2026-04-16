@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fcar.be.core.common.util.SecurityUtils;
 import com.fcar.be.core.exception.AppException;
 import com.fcar.be.core.exception.ErrorCode;
 import com.fcar.be.modules.crm.dto.request.LeadActivityReq;
@@ -17,6 +18,8 @@ import com.fcar.be.modules.crm.mapper.CrmMapper;
 import com.fcar.be.modules.crm.repository.LeadActivityRepository;
 import com.fcar.be.modules.crm.repository.LeadRepository;
 import com.fcar.be.modules.crm.service.LeadService;
+import com.fcar.be.modules.identity.repository.UserRepository;
+import com.fcar.be.modules.inventory.repository.ShowroomRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,33 +30,38 @@ public class LeadServiceImpl implements LeadService {
     private final LeadRepository leadRepository;
     private final LeadActivityRepository leadActivityRepository; // Đã thêm repository này
     private final CrmMapper crmMapper;
+    private final ShowroomRepository showroomRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
     public LeadRes createLead(LeadCreateReq request) {
+        if (request.getShowroomId() == null
+                || !showroomRepository.existsByIdAndIsDeletedFalse(request.getShowroomId())) {
+            throw new AppException(ErrorCode.SHOWROOM_NOT_FOUND);
+        }
         Lead lead = crmMapper.toLead(request);
+        if (lead.getUserId() == null) {
+            SecurityUtils.getCurrentUserId().ifPresent(lead::setUserId);
+        }
         lead.setStatus(LeadStatus.NEEDS_CONSULTATION);
         return crmMapper.toLeadRes(leadRepository.save(lead));
     }
 
-    @Override
-    @Transactional
-    public LeadRes assignSales(Long leadId, Long salesId) {
-        Lead lead = leadRepository
-                .findById(leadId)
-                .orElseThrow(() -> new AppException(ErrorCode.LEAD_NOT_FOUND)); // Cần tạo mã lỗi LEAD_NOT_FOUND sau
-
-        lead.setAssignedSalesId(salesId);
-        // Bỏ thao tác đổi status vì mặc định đã là NEEDS_CONSULTATION
-        // hoặc khách có thể đang ở TEST_DRIVE_SCHEDULED
-        return crmMapper.toLeadRes(leadRepository.save(lead));
+    private List<LeadRes> getLeadsByShowroom(Long showroomId) {
+        return leadRepository.findByShowroomIdOrderByCreatedAtDesc(showroomId).stream()
+                .map(crmMapper::toLeadRes)
+                .toList();
     }
 
     @Override
-    public List<LeadRes> getLeadsBySales(Long salesId) {
-        return leadRepository.findByAssignedSalesId(salesId).stream()
-                .map(crmMapper::toLeadRes)
-                .toList();
+    public List<LeadRes> getLeadsForCurrentSales(Long salesUserId) {
+        var salesUser =
+                userRepository.findById(salesUserId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        if (salesUser.getShowroomId() == null) {
+            throw new AppException(ErrorCode.SHOWROOM_NOT_FOUND);
+        }
+        return getLeadsByShowroom(salesUser.getShowroomId());
     }
 
     @Override

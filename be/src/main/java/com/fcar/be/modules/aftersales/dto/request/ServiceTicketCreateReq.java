@@ -19,6 +19,9 @@ public class ServiceTicketCreateReq {
     @NotBlank
     String description;
 
+    @NotBlank
+    String serviceLocation;
+
     @NotNull
     @PositiveOrZero
     BigDecimal totalCost;

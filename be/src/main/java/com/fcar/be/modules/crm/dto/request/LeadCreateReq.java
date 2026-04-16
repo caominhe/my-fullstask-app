@@ -19,6 +19,8 @@ public class LeadCreateReq {
     @NotBlank
     String phone;
 
+    String interestedVin; // VIN khách quan tâm để showroom thao tác nhanh (lock/hợp đồng)
+
     LeadSource source;
 
     Long showroomId; // Khách hàng truyền lên ID Showroom muốn đăng ký

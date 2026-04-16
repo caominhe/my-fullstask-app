@@ -13,15 +13,14 @@ import com.fcar.be.core.exception.AppException;
 import com.fcar.be.core.exception.ErrorCode;
 import com.fcar.be.modules.crm.service.LeadService;
 import com.fcar.be.modules.identity.repository.UserRepository;
+import com.fcar.be.modules.inventory.repository.ShowroomRepository;
 import com.fcar.be.modules.marketing.dto.request.CampaignCreateReq;
 import com.fcar.be.modules.marketing.dto.response.VoucherRes;
 import com.fcar.be.modules.marketing.entity.Campaign;
-import com.fcar.be.modules.marketing.entity.Event;
 import com.fcar.be.modules.marketing.entity.Voucher;
 import com.fcar.be.modules.marketing.enums.VoucherStatus;
 import com.fcar.be.modules.marketing.mapper.MarketingMapper;
 import com.fcar.be.modules.marketing.repository.CampaignRepository;
-import com.fcar.be.modules.marketing.repository.EventRepository;
 import com.fcar.be.modules.marketing.repository.VoucherRepository;
 import com.fcar.be.modules.marketing.service.MarketingService;
 
@@ -33,13 +32,93 @@ public class MarketingServiceImpl implements MarketingService {
     private final CampaignRepository campaignRepository;
     private final VoucherRepository voucherRepository;
     private final MarketingMapper marketingMapper;
-    private final EventRepository eventRepository;
     private final LeadService leadService;
     private final UserRepository userRepository;
+    private final ShowroomRepository showroomRepository;
 
     @Override
     public Campaign createCampaign(CampaignCreateReq request) {
+        String normalizedName = normalizeCampaignName(request.getName());
+        if (campaignRepository.existsByNameIgnoreCase(normalizedName)) {
+            throw new AppException(ErrorCode.CAMPAIGN_NAME_DUPLICATED);
+        }
+        request.setName(normalizedName);
+        normalizeAndValidateTarget(request);
         return campaignRepository.save(marketingMapper.toCampaign(request));
+    }
+
+    @Override
+    @Transactional
+    public Campaign updateCampaign(Long campaignId, CampaignCreateReq request) {
+        Campaign campaign = campaignRepository
+                .findById(campaignId)
+                .orElseThrow(() -> new AppException(ErrorCode.CAMPAIGN_NOT_FOUND));
+
+        String normalizedName = normalizeCampaignName(request.getName());
+        if (campaignRepository.existsByNameIgnoreCaseAndIdNot(normalizedName, campaignId)) {
+            throw new AppException(ErrorCode.CAMPAIGN_NAME_DUPLICATED);
+        }
+        normalizeAndValidateTarget(request);
+
+        campaign.setName(normalizedName);
+        campaign.setDiscountType(request.getDiscountType());
+        campaign.setDiscountValue(request.getDiscountValue());
+        campaign.setApplicableMasterDataIds(request.getApplicableMasterDataIds());
+        campaign.setTargetScope(request.getTargetScope());
+        campaign.setTargetRegion(request.getTargetRegion());
+        campaign.setTargetProvince(request.getTargetProvince());
+        campaign.setTargetShowroomId(request.getTargetShowroomId());
+        return campaignRepository.save(campaign);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCampaign(Long campaignId) {
+        Campaign campaign = campaignRepository
+                .findById(campaignId)
+                .orElseThrow(() -> new AppException(ErrorCode.CAMPAIGN_NOT_FOUND));
+        List<Voucher> vouchers = voucherRepository.findAllByCampaignIdWithCampaign(campaignId);
+        if (!vouchers.isEmpty()) {
+            voucherRepository.deleteAll(vouchers);
+        }
+        campaignRepository.delete(campaign);
+    }
+
+    @Override
+    public List<Campaign> getCampaigns() {
+        return campaignRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Campaign> getCustomerCampaigns(Long showroomId) {
+        List<Campaign> campaigns = campaignRepository.findAllByOrderByCreatedAtDesc();
+        if (showroomId == null) {
+            return campaigns.stream()
+                    .filter(c -> c.getTargetScope() == null
+                            || c.getTargetScope() == com.fcar.be.modules.marketing.enums.CampaignTargetScope.ALL)
+                    .toList();
+        }
+        if (!showroomRepository.existsById(showroomId)) {
+            throw new AppException(ErrorCode.CAMPAIGN_TARGET_SHOWROOM_NOT_FOUND);
+        }
+        return campaigns.stream()
+                .filter(c -> c.getTargetScope() == com.fcar.be.modules.marketing.enums.CampaignTargetScope.SHOWROOM
+                        && c.getTargetShowroomId() != null
+                        && c.getTargetShowroomId().equals(showroomId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoucherRes> getCampaignVouchers(Long campaignId) {
+        refreshExpiredVoucherStatuses();
+        if (!campaignRepository.existsById(campaignId)) {
+            throw new AppException(ErrorCode.CAMPAIGN_NOT_FOUND);
+        }
+        return voucherRepository.findAllByCampaignIdWithCampaign(campaignId).stream()
+                .map(marketingMapper::toVoucherRes)
+                .toList();
     }
 
     @Override
@@ -71,6 +150,7 @@ public class MarketingServiceImpl implements MarketingService {
     @Override
     @Transactional
     public VoucherRes claimVoucher(String code, Long userId) {
+        refreshExpiredVoucherStatuses();
         Voucher voucher =
                 voucherRepository.findById(code).orElseThrow(() -> new AppException(ErrorCode.VOUCHER_NOT_FOUND));
 
@@ -90,59 +170,62 @@ public class MarketingServiceImpl implements MarketingService {
 
     @Override
     @Transactional
-    public VoucherRes useVoucher(String code, Long userId) {
-        Voucher voucher = voucherRepository
-                .findByCodeAndUserId(code, userId)
-                .orElseThrow(() -> new AppException(ErrorCode.VOUCHER_NOT_OWNED));
+    public VoucherRes registerCampaignAndClaimVoucher(Long campaignId, Long userId, Long showroomId) {
+        refreshExpiredVoucherStatuses();
+        Campaign campaign = campaignRepository
+                .findById(campaignId)
+                .orElseThrow(() -> new AppException(ErrorCode.CAMPAIGN_NOT_FOUND));
 
-        if (voucher.getStatus() != VoucherStatus.CLAIMED) {
-            throw new AppException(ErrorCode.VOUCHER_INVALID_STATUS);
+        if (campaign.getTargetScope() == com.fcar.be.modules.marketing.enums.CampaignTargetScope.SHOWROOM) {
+            if (showroomId == null) {
+                throw new AppException(ErrorCode.CAMPAIGN_TARGET_SHOWROOM_REQUIRED);
+            }
+            if (campaign.getTargetShowroomId() == null
+                    || !campaign.getTargetShowroomId().equals(showroomId)) {
+                throw new AppException(ErrorCode.CAMPAIGN_TARGET_SHOWROOM_NOT_FOUND);
+            }
         }
-        if (voucher.getExpiredAt().isBefore(LocalDateTime.now())) {
-            throw new AppException(ErrorCode.VOUCHER_EXPIRED);
+
+        Voucher existingVoucher = voucherRepository
+                .findFirstByCampaignIdAndUserIdOrderByExpiredAtDesc(campaignId, userId)
+                .orElse(null);
+        if (existingVoucher != null) {
+            return marketingMapper.toVoucherRes(existingVoucher);
         }
 
-        voucher.setStatus(VoucherStatus.USED);
-        return marketingMapper.toVoucherRes(voucherRepository.save(voucher));
-    }
-
-    @Transactional
-    public VoucherRes registerEventAndClaimVoucher(Long eventId, Long userId) {
-        // 1. Kiểm tra Event
-        Event event = eventRepository
-                .findById(eventId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION)); // Cần tạo thêm EVENT_NOT_FOUND
-
-        // 2. Lấy thông tin User hiện tại (Identity Module)
         var user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        // 3. Tự động tạo Lead bên CRM Module
+        Long leadShowroomId = showroomId != null ? showroomId : campaign.getTargetShowroomId();
         com.fcar.be.modules.crm.dto.request.LeadCreateReq leadReq =
                 com.fcar.be.modules.crm.dto.request.LeadCreateReq.builder()
                         .userId(userId)
                         .fullName(user.getFullName())
-                        .phone(user.getPhone() != null ? user.getPhone() : "0000000000") // Tránh lỗi null phone
-                        .source(com.fcar.be.modules.crm.enums.LeadSource.EVENT)
-                        .showroomId(event.getShowroomId()) // Tự động định tuyến Lead về Showroom tổ chức Event
+                        .phone(user.getPhone() != null ? user.getPhone() : "0000000000")
+                        .source(com.fcar.be.modules.crm.enums.LeadSource.WEB)
+                        .showroomId(leadShowroomId)
                         .build();
         leadService.createLead(leadReq);
 
-        // 4. Tìm và cấp Voucher (Marketing Module)
-        if (event.getCampaign() != null) {
-            Voucher voucher = voucherRepository
-                    .findFirstByCampaignIdAndStatus(event.getCampaign().getId(), VoucherStatus.ACTIVE)
-                    .orElseThrow(() -> new AppException(ErrorCode.VOUCHER_NOT_FOUND)); // Hết voucher
+        Voucher voucher = voucherRepository
+                .findFirstByCampaignIdAndStatusAndUserIdIsNullOrderByExpiredAtAsc(campaignId, VoucherStatus.ACTIVE)
+                .orElseThrow(() -> new AppException(ErrorCode.VOUCHER_NOT_FOUND));
+        voucher.setUserId(userId);
+        voucher.setStatus(VoucherStatus.CLAIMED);
+        return marketingMapper.toVoucherRes(voucherRepository.save(voucher));
+    }
 
-            voucher.setUserId(userId);
-            voucher.setStatus(VoucherStatus.CLAIMED);
-            return marketingMapper.toVoucherRes(voucherRepository.save(voucher));
-        }
-        return null; // Trả về rỗng nếu sự kiện không có khuyến mãi
+    @Override
+    @Transactional
+    public List<VoucherRes> getMyVouchers(Long userId) {
+        refreshExpiredVoucherStatuses();
+        return voucherRepository.findByUserIdOrderByExpiredAtDesc(userId).stream()
+                .map(marketingMapper::toVoucherRes)
+                .toList();
     }
 
     @Override
     @Transactional
     public VoucherRes validateAndUseVoucher(String code, Long userId, Long masterDataId) {
+        refreshExpiredVoucherStatuses();
         // 1. Kiểm tra quyền sở hữu
         Voucher voucher = voucherRepository
                 .findByCodeAndUserId(code, userId)
@@ -169,5 +252,71 @@ public class MarketingServiceImpl implements MarketingService {
         // 5. Hợp lệ -> Đổi thành USED
         voucher.setStatus(VoucherStatus.USED);
         return marketingMapper.toVoucherRes(voucherRepository.save(voucher));
+    }
+
+    private String normalizeCampaignName(String name) {
+        return name == null ? null : name.trim();
+    }
+
+    private String normalizeTargetProvince(String province) {
+        if (province == null) return null;
+        String trimmed = province.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private void normalizeAndValidateTarget(CampaignCreateReq request) {
+        if (request.getTargetScope() == null) {
+            throw new AppException(ErrorCode.CAMPAIGN_TARGET_SCOPE_REQUIRED);
+        }
+        request.setTargetProvince(normalizeTargetProvince(request.getTargetProvince()));
+        switch (request.getTargetScope()) {
+            case ALL -> {
+                request.setTargetRegion(null);
+                request.setTargetProvince(null);
+                request.setTargetShowroomId(null);
+            }
+            case REGION -> {
+                if (request.getTargetRegion() == null) {
+                    throw new AppException(ErrorCode.CAMPAIGN_TARGET_REGION_REQUIRED);
+                }
+                request.setTargetProvince(null);
+                request.setTargetShowroomId(null);
+            }
+            case PROVINCE -> {
+                if (request.getTargetProvince() == null) {
+                    throw new AppException(ErrorCode.CAMPAIGN_TARGET_PROVINCE_REQUIRED);
+                }
+                request.setTargetRegion(null);
+                request.setTargetShowroomId(null);
+            }
+            case SHOWROOM -> {
+                if (request.getTargetShowroomId() == null) {
+                    throw new AppException(ErrorCode.CAMPAIGN_TARGET_SHOWROOM_REQUIRED);
+                }
+                if (!showroomRepository.existsById(request.getTargetShowroomId())) {
+                    throw new AppException(ErrorCode.CAMPAIGN_TARGET_SHOWROOM_NOT_FOUND);
+                }
+                request.setTargetRegion(null);
+                request.setTargetProvince(null);
+            }
+            default -> throw new AppException(ErrorCode.CAMPAIGN_TARGET_SCOPE_REQUIRED);
+        }
+    }
+
+    private void refreshExpiredVoucherStatuses() {
+        List<Voucher> allVouchers = voucherRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        boolean changed = false;
+        for (Voucher voucher : allVouchers) {
+            if ((voucher.getStatus() == VoucherStatus.ACTIVE || voucher.getStatus() == VoucherStatus.CLAIMED)
+                    && voucher.getExpiredAt() != null
+                    && voucher.getExpiredAt().isBefore(now)) {
+                voucher.setStatus(VoucherStatus.EXPIRED);
+                changed = true;
+            }
+        }
+        if (changed) {
+            voucherRepository.saveAll(allVouchers);
+        }
     }
 }

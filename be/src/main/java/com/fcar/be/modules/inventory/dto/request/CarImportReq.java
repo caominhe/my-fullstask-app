@@ -1,5 +1,7 @@
 package com.fcar.be.modules.inventory.dto.request;
 
+import java.util.List;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -31,6 +33,14 @@ public class CarImportReq {
     @NotBlank(message = "CAR_COLOR_REQUIRED")
     @Size(max = 60, message = "CAR_COLOR_TOO_LONG")
     String color;
+
+    @Size(max = 1000, message = "CAR_IMAGE_URL_TOO_LONG")
+    String imageUrl;
+
+    List<String> imageUrls;
+
+    @Size(max = 1000, message = "CAR_IMAGE_URL_TOO_LONG")
+    String imageFolderUrl;
 
     Long showroomId; // Có thể null nếu để ở kho tổng
 }

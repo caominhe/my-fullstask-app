@@ -54,7 +54,7 @@ export default function PublicLayout() {
                 Lái thử
               </Button>
 
-              {user && hasRole(user, ROLES.SALES) && (
+              {user && hasRole(user, ROLES.SHOWROOM) && (
                 <Button color="inherit" size="small" variant="outlined" onClick={() => navigate(ROUTES.SHOWROOM_HOME)}>
                   Showroom
                 </Button>

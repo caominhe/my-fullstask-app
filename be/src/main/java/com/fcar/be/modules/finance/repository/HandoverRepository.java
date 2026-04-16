@@ -11,5 +11,9 @@ import com.fcar.be.modules.finance.entity.Handover;
 public interface HandoverRepository extends JpaRepository<Handover, Long> {
     Optional<Handover> findByContractNo(String contractNo);
 
+    Optional<Handover> findByLicensePlate(String licensePlate);
+
     boolean existsByLicensePlate(String licensePlate);
+
+    boolean existsByContractNoAndStatus(String contractNo, com.fcar.be.modules.finance.enums.HandoverStatus status);
 }

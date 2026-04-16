@@ -1,8 +1,8 @@
 package com.fcar.be.modules.identity.entity;
 
-import java.util.Set;
-
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -20,11 +20,4 @@ public class Role {
     String name;
 
     String description;
-
-    @ManyToMany(fetch = FetchType.EAGER) // Để Spring Security lấy quyền ngay khi query Role
-    @JoinTable(
-            name = "roles_permissions",
-            joinColumns = @JoinColumn(name = "role_name"),
-            inverseJoinColumns = @JoinColumn(name = "permission_name"))
-    Set<Permission> permissions;
 }

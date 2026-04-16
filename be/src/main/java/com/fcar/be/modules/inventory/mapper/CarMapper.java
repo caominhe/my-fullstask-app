@@ -10,7 +10,11 @@ import com.fcar.be.modules.inventory.entity.Car;
 @Mapper(componentModel = "spring")
 public interface CarMapper {
     @Mapping(target = "masterData", ignore = true) // Sẽ tự set bằng code trong Service
+    @Mapping(target = "showroom", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "listedPrice", ignore = true)
+    @Mapping(target = "imageUrlsJson", ignore = true)
+    @Mapping(target = "imageFolderUrl", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Car toCar(CarImportReq request);
@@ -21,5 +25,6 @@ public interface CarMapper {
     @Mapping(source = "masterData.version", target = "version")
     @Mapping(source = "masterData.basePrice", target = "basePrice")
     @Mapping(source = "showroom.name", target = "showroomName")
+    @Mapping(target = "imageUrls", ignore = true)
     CarDetailRes toCarDetailRes(Car car);
 }

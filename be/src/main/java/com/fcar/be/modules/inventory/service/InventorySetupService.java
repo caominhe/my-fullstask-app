@@ -5,6 +5,7 @@ import java.util.List;
 import com.fcar.be.modules.inventory.dto.request.MasterDataCreateReq;
 import com.fcar.be.modules.inventory.dto.request.ShowroomCreateReq;
 import com.fcar.be.modules.inventory.dto.response.MasterDataRes;
+import com.fcar.be.modules.inventory.dto.response.ShowroomManagementRes;
 import com.fcar.be.modules.inventory.dto.response.ShowroomRes;
 
 public interface InventorySetupService {
@@ -23,4 +24,6 @@ public interface InventorySetupService {
     ShowroomRes updateShowroom(Long id, ShowroomCreateReq request);
 
     void deleteShowroom(Long id);
+
+    ShowroomManagementRes getShowroomManagement(Long showroomId);
 }

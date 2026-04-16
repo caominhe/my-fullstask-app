@@ -1,5 +1,6 @@
 package com.fcar.be.modules.aftersales.dto.request;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -17,5 +18,6 @@ public class WarrantyActivateReq {
     String licensePlate;
 
     @NotNull
+    @Min(1)
     Integer durationMonths; // Thời hạn bảo hành (VD: 36 tháng)
 }

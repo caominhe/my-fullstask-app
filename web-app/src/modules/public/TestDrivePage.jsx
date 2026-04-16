@@ -10,6 +10,7 @@ export default function TestDrivePage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [showroomId, setShowroomId] = useState("");
+  const [showrooms, setShowrooms] = useState([]);
   const [cars, setCars] = useState([]);
   const [selectedVin, setSelectedVin] = useState(preVin);
   const [message, setMessage] = useState({ type: "info", text: "" });
@@ -19,8 +20,10 @@ export default function TestDrivePage() {
     let cancelled = false;
     (async () => {
       try {
-        const data = await portalApi.getCars();
+        const data = await portalApi.getCars({ excludeWithContract: true });
         if (!cancelled) setCars(data?.result || []);
+        const showroomRes = await portalApi.getShowrooms();
+        if (!cancelled) setShowrooms(showroomRes?.result || []);
       } catch {
         /* catalog optional */
       }
@@ -34,26 +37,25 @@ export default function TestDrivePage() {
     if (preVin) setSelectedVin(preVin);
   }, [preVin]);
 
-  const selectedCar = cars.find((c) => c.vin === selectedVin);
-  const carLabel = selectedCar
-    ? [selectedCar.brand, selectedCar.model, selectedCar.version].filter(Boolean).join(" ")
-    : "";
-
   const submit = async (e) => {
     e.preventDefault();
     if (!fullName.trim() || !phone.trim()) {
       setMessage({ type: "error", text: "Vui lòng nhập họ tên và số điện thoại." });
       return;
     }
+    if (!showroomId) {
+      setMessage({ type: "error", text: "Vui lòng chọn showroom muốn trải nghiệm lái thử." });
+      return;
+    }
     setLoading(true);
     setMessage({ type: "info", text: "" });
     try {
-      const namePayload = carLabel ? `${fullName.trim()} — Quan tâm: ${carLabel}` : fullName.trim();
       await portalApi.createLead({
-        fullName: namePayload,
+        fullName: fullName.trim(),
         phone: phone.trim(),
+        interestedVin: selectedVin || undefined,
         source: "WEB",
-        showroomId: showroomId ? Number(showroomId) : undefined,
+        showroomId: Number(showroomId),
       });
       setMessage({ type: "success", text: "Đăng ký lái thử thành công. Showroom sẽ liên hệ sớm." });
       setFullName("");
@@ -108,13 +110,24 @@ export default function TestDrivePage() {
             </FormControl>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Showroom ID (tuỳ chọn)"
-              value={showroomId}
-              onChange={(e) => setShowroomId(e.target.value)}
-            />
+            <FormControl fullWidth required>
+              <InputLabel id="showroom-select-label">Showroom muốn trải nghiệm</InputLabel>
+              <Select
+                labelId="showroom-select-label"
+                label="Showroom muốn trải nghiệm"
+                value={showroomId}
+                onChange={(e) => setShowroomId(e.target.value)}
+              >
+                <MenuItem value="">
+                  <em>— Chọn showroom —</em>
+                </MenuItem>
+                {showrooms.map((s) => (
+                  <MenuItem key={s.id} value={String(s.id)}>
+                    {s.name} {s.address ? `· ${s.address}` : ""}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
         </Grid>
         <Button sx={{ mt: 3 }} type="submit" variant="contained" size="large" disabled={loading}>

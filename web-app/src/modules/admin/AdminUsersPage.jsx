@@ -7,34 +7,43 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  TextField,
   Typography,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import { portalApi } from "../../services/portalApiService";
+import { ROLES } from "../../constants/roles";
+
+const ROLE_OPTIONS = [ROLES.ADMIN, ROLES.SHOWROOM, ROLES.CUSTOMER];
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
+  const [showrooms, setShowrooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
 
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [roleCsv, setRoleCsv] = useState("CUSTOMER");
+  const [selectedRoles, setSelectedRoles] = useState([ROLES.CUSTOMER]);
+  const [selectedShowroomId, setSelectedShowroomId] = useState("");
 
   const load = async () => {
     setLoading(true);
     setMsg({ type: "", text: "" });
     try {
-      const res = await portalApi.getUsers();
-      setUsers(res?.result || []);
+      const [usersRes, showroomsRes] = await Promise.all([portalApi.getUsers(), portalApi.getShowrooms()]);
+      setUsers(usersRes?.result || []);
+      setShowrooms(showroomsRes?.result || []);
     } catch (e) {
       setMsg({ type: "error", text: e.message || "Lỗi tải users." });
     } finally {
@@ -48,21 +57,36 @@ export default function AdminUsersPage() {
 
   const openModal = (u) => {
     setEditId(u.id);
-    setRoleCsv((u.roles || []).map((r) => r.name).join(",") || "CUSTOMER");
+    const roleNames = (u.roles || []).map((r) => r.name);
+    setSelectedRoles(roleNames.length ? roleNames : [ROLES.CUSTOMER]);
+    setSelectedShowroomId(u.showroomId != null ? String(u.showroomId) : "");
     setOpen(true);
   };
 
+  const closeModal = () => {
+    setOpen(false);
+    setEditId(null);
+    setSelectedRoles([ROLES.CUSTOMER]);
+    setSelectedShowroomId("");
+  };
+
+  const hasShowroomRole = selectedRoles.includes(ROLES.SHOWROOM);
+
   const saveRoles = async () => {
     if (!editId) return;
+    if (selectedRoles.length === 0) {
+      setMsg({ type: "error", text: "Vui lòng chọn ít nhất 1 vai trò." });
+      return;
+    }
+    if (hasShowroomRole && !selectedShowroomId) {
+      setMsg({ type: "error", text: "Role SHOWROOM bắt buộc chọn showroom quản lý." });
+      return;
+    }
     setLoading(true);
     try {
-      const roleNames = roleCsv
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      await portalApi.updateUserRoles(editId, roleNames);
-      setMsg({ type: "success", text: "Đã cập nhật quyền (ADMIN / SALES / CUSTOMER)." });
-      setOpen(false);
+      await portalApi.updateUserRoles(editId, selectedRoles, hasShowroomRole ? Number(selectedShowroomId) : null);
+      setMsg({ type: "success", text: "Đã cập nhật quyền (ADMIN / SHOWROOM / CUSTOMER)." });
+      closeModal();
       await load();
     } catch (e) {
       setMsg({ type: "error", text: e.message || "Lỗi." });
@@ -71,13 +95,19 @@ export default function AdminUsersPage() {
     }
   };
 
+  const showroomNameById = (showroomId) => {
+    if (showroomId == null) return "—";
+    const showroom = showrooms.find((s) => s.id === showroomId);
+    return showroom ? showroom.name : `Showroom #${showroomId}`;
+  };
+
   return (
     <Box>
       <Typography variant="h5" fontWeight={800} gutterBottom>
         Quản trị nhân sự
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        GET /users · PUT /users/{`{id}`}/roles — gán quyền ADMIN, SALES, CUSTOMER (khớp DB).
+        GET /users · PUT /users/{`{id}`}/roles — chọn role bằng UI, nếu có SHOWROOM thì phải chọn showroom.
       </Typography>
       {msg.text ? (
         <Alert severity={msg.type === "success" ? "success" : "error"} sx={{ mb: 2 }}>
@@ -99,6 +129,7 @@ export default function AdminUsersPage() {
               <TableCell>Email</TableCell>
               <TableCell>Họ tên</TableCell>
               <TableCell>Vai trò</TableCell>
+              <TableCell>Showroom quản lý</TableCell>
               <TableCell align="right">Thao tác</TableCell>
             </TableRow>
           </TableHead>
@@ -109,6 +140,7 @@ export default function AdminUsersPage() {
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{u.fullName}</TableCell>
                 <TableCell>{(u.roles || []).map((r) => r.name).join(", ") || "—"}</TableCell>
+                <TableCell>{showroomNameById(u.showroomId)}</TableCell>
                 <TableCell align="right">
                   <IconButton size="small" color="primary" onClick={() => openModal(u)} aria-label="sửa quyền">
                     <EditIcon fontSize="small" />
@@ -120,21 +152,46 @@ export default function AdminUsersPage() {
         </Table>
       </Paper>
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={closeModal} fullWidth maxWidth="sm">
         <DialogTitle>Sửa quyền người dùng #{editId}</DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            fullWidth
-            label="Roles (CSV)"
-            helperText="VD: ADMIN,SALES hoặc CUSTOMER"
-            value={roleCsv}
-            onChange={(e) => setRoleCsv(e.target.value.toUpperCase())}
-          />
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="roles-select-label">Vai trò</InputLabel>
+            <Select
+              labelId="roles-select-label"
+              multiple
+              value={selectedRoles}
+              label="Vai trò"
+              onChange={(e) => setSelectedRoles(e.target.value)}
+            >
+              {ROLE_OPTIONS.map((role) => (
+                <MenuItem key={role} value={role}>
+                  {role}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {hasShowroomRole ? (
+            <FormControl fullWidth margin="dense">
+              <InputLabel id="showroom-select-label">Showroom quản lý</InputLabel>
+              <Select
+                labelId="showroom-select-label"
+                value={selectedShowroomId}
+                label="Showroom quản lý"
+                onChange={(e) => setSelectedShowroomId(e.target.value)}
+              >
+                {showrooms.map((s) => (
+                  <MenuItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Huỷ</Button>
+          <Button onClick={closeModal}>Huỷ</Button>
           <Button variant="contained" onClick={saveRoles} disabled={loading}>
             Lưu
           </Button>

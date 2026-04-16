@@ -31,6 +31,9 @@ public class Handover {
     @Column(name = "handover_date")
     LocalDateTime handoverDate; // Ngày giao xe thực tế
 
+    @Column(name = "receipt_id")
+    Long receiptId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

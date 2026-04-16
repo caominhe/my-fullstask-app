@@ -14,6 +14,7 @@ public class HandoverRes {
     Long id;
     String contractNo;
     String licensePlate;
+    Long receiptId;
     LocalDateTime handoverDate;
     HandoverStatus status;
 }

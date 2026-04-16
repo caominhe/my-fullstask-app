@@ -1,70 +1,129 @@
-# Getting Started with Create React App
+﻿# FCAR Frontend (`web-app`)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Frontend cho hệ thống FCAR, xây dựng bằng React + MUI, kết nối với backend qua REST API (`/api/v1`).
 
-## Available Scripts
+## 1) Công nghệ chính
 
-In the project directory, you can run:
+- React 18
+- React Router DOM 6
+- Material UI (MUI)
+- CRA (`react-scripts`)
 
-### `npm start`
+## 2) Kiến trúc thư mục
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Source chính nằm trong `src/`.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- `modules/`: các màn hình theo domain (`public`, `customer`, `showroom`, `admin`, `auth`)
+- `layouts/`: layout theo vai trò (public/showroom/admin)
+- `routes/`: định nghĩa route + guard role
+- `services/`: API client (`portalApiService`)
+- `contexts/`: auth context
+- `constants/`: route, role, constant dùng chung
+- `components/`: component tái sử dụng
 
-### `npm test`
+## 3) Route chính theo vai trò
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Định nghĩa tại `src/routes/AppRoutes.jsx`.
 
-### `npm run build`
+### Public
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- `/` trang marketing
+- `/cars` danh mục xe
+- `/cars/:vin` chi tiết xe
+- `/test-drive` đăng ký lái thử
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Customer (role `CUSTOMER`)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- `/profile`
+- `/my-garage`
+- `/promotions`
 
-### `npm run eject`
+### Showroom (role `SHOWROOM`)
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- `/showroom`
+- `/showroom/sales` (CRM + lock xe + tạo hợp đồng)
+- `/showroom/finance`
+- `/showroom/aftersales`
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Admin (role `ADMIN`)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- `/admin`
+- `/admin/inventory`
+- `/admin/showrooms`
+- `/admin/contracts`
+- `/admin/campaigns`
+- `/admin/aftersales`
+- `/admin/users`
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 4) Tích hợp API
 
-## Learn More
+File: `src/services/portalApiService.js`.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Nhóm API chính:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- Admin: users, inventory, showroom, campaigns
+- Sales/Showroom: leads, lock car, create contract, lead vouchers
+- Finance/Handover
+- Aftersales
+- Customer: events, my vouchers, register event, confirm contract
 
-### Code Splitting
+API client dùng `apiClient` chung trong `src/api/client` để xử lý base URL, token, error.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 5) Cài đặt và chạy local
 
-### Analyzing the Bundle Size
+### Yêu cầu
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- Node.js 18+ (khuyến nghị)
+- npm
 
-### Making a Progressive Web App
+### Cài dependencies
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```bash
+cd web-app
+npm install
+```
 
-### Advanced Configuration
+### Chạy dev
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```bash
+npm start
+```
 
-### Deployment
+Mặc định app chạy ở `http://localhost:3000`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Build production
 
-### `npm run build` fails to minify
+```bash
+npm run build
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## 6) Các script
+
+Trong `web-app/package.json`:
+
+- `npm start`: chạy dev server
+- `npm run build`: build production
+- `npm test`: chạy test
+- `npm run eject`: eject CRA (không khuyến nghị)
+
+## 7) Luồng nghiệp vụ nổi bật
+
+- Customer đăng ký event -> nhận voucher (`ACTIVE -> CLAIMED`) và thấy trong ví voucher.
+- Showroom xử lý lead -> khóa VIN -> rà voucher khách -> tạo hợp đồng và tính tiền cuối.
+- Admin quản lý campaign theo phạm vi (`ALL/REGION/PROVINCE/SHOWROOM`) và sinh voucher.
+
+## 8) Cấu hình môi trường
+
+Frontend cần trỏ đúng backend `http://localhost:8080/api/v1`.
+
+Nếu project có file `.env` riêng cho frontend, kiểm tra biến API base URL tương ứng (tùy cấu hình `apiClient`).
+
+## 9) Ghi chú phát triển
+
+- Ưu tiên tái sử dụng API đã có trong `portalApiService`, tránh tạo call trùng.
+- Các trang role-based nên giữ guard trong `AppRoutes + ProtectedRoute`.
+- Khi thêm màn mới:
+  1. tạo module page
+  2. thêm route
+  3. thêm menu trong layout tương ứng
+  4. thêm API method nếu cần

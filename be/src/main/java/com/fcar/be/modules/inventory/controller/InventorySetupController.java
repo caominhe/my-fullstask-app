@@ -11,6 +11,7 @@ import com.fcar.be.core.common.dto.ApiResponse;
 import com.fcar.be.modules.inventory.dto.request.MasterDataCreateReq;
 import com.fcar.be.modules.inventory.dto.request.ShowroomCreateReq;
 import com.fcar.be.modules.inventory.dto.response.MasterDataRes;
+import com.fcar.be.modules.inventory.dto.response.ShowroomManagementRes;
 import com.fcar.be.modules.inventory.dto.response.ShowroomRes;
 import com.fcar.be.modules.inventory.service.InventorySetupService;
 
@@ -82,5 +83,13 @@ public class InventorySetupController {
     public ApiResponse<String> deleteShowroom(@PathVariable Long id) {
         inventorySetupService.deleteShowroom(id);
         return ApiResponse.<String>builder().result("Deleted").build();
+    }
+
+    @GetMapping("/showrooms/{id}/management")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<ShowroomManagementRes> getShowroomManagement(@PathVariable Long id) {
+        return ApiResponse.<ShowroomManagementRes>builder()
+                .result(inventorySetupService.getShowroomManagement(id))
+                .build();
     }
 }

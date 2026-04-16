@@ -81,6 +81,9 @@ web_modules/
 .env.production.local
 .env.local
 
+# Backend: script chứa biến môi trường / secret — dùng be/run-local.bat.example làm mẫu
+be/run-local.bat
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

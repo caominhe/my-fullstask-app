@@ -30,6 +30,9 @@ public class ServiceTicket {
     @Column(columnDefinition = "TEXT", nullable = false)
     String description;
 
+    @Column(name = "service_location", length = 255, nullable = false)
+    String serviceLocation;
+
     @Column(name = "total_cost", nullable = false)
     BigDecimal totalCost;
 }

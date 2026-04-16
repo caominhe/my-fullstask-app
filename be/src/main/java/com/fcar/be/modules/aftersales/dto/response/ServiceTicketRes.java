@@ -14,5 +14,6 @@ public class ServiceTicketRes {
     Long warrantyId;
     LocalDateTime serviceDate;
     String description;
+    String serviceLocation;
     BigDecimal totalCost;
 }

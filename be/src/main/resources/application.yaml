@@ -1,3 +1,4 @@
+# Bí mật (DB, JWT, OAuth, Cloudinary, …) không ghi trực tiếp vào repo — đặt qua biến môi trường.
 # ===================================================================
 # 1. CẤU HÌNH SERVER & ỨNG DỤNG
 # ===================================================================
@@ -9,6 +10,10 @@ server:
 spring:
   application:
     name: fcar-backend
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
   profiles:
     active: dev                           # Profile đang chạy (dev, prod, test). Giúp dễ dàng tách file cấu hình sau này.
 
@@ -16,9 +21,10 @@ spring:
   # 2. CẤU HÌNH DATABASE (MySQL)
   # ===================================================================
   datasource:
-    url: jdbc:mysql://localhost:3306/fcar_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
-    username: root                        # Tài khoản MySQL
-    password: 123123123                   # Mật khẩu MySQL
+    # SPRING_DATASOURCE_* (Spring Boot map tự động từ biến môi trường)
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/fcar_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
     # Tối ưu hóa Connection Pool (HikariCP)
@@ -75,13 +81,19 @@ spring:
 # ===================================================================
 app:
   jwt:
-    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    # Bắt buộc set JWT_SECRET (chuỗi hex/base64 đủ dài, ví dụ >= 256 bit)
+    secret: ${JWT_SECRET}
     expiration-ms: 3600000 # Access token ~1 giờ
     refresh-expiration-ms: 604800000 # Refresh token ~7 ngày
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME} 
+    api-key: ${CLOUDINARY_API_KEY} 
+    api-secret: ${CLOUDINARY_API_SECRET} 
+    folder: ${CLOUDINARY_FOLDER:fcar}
   # Tài khoản admin khởi tạo lần đầu (AdminUserBootstrap). Đăng nhập bằng email + mật khẩu.
   security:
-    bootstrap-admin-email: admin@fcar.local
-    bootstrap-admin-password: admin
+    bootstrap-admin-email: ${BOOTSTRAP_ADMIN_EMAIL:admin@fcar.local}
+    bootstrap-admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:admin}
 
 # ===================================================================
 # 6. CẤU HÌNH SWAGGER (Tài liệu API tự động)

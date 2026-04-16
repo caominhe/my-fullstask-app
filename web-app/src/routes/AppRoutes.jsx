@@ -23,7 +23,6 @@ import MyGaragePage from "../modules/customer/MyGaragePage";
 import PromotionsPage from "../modules/customer/PromotionsPage";
 
 import ShowroomHomePage from "../modules/showroom/ShowroomHomePage";
-import ShowroomLeadsPage from "../modules/showroom/ShowroomLeadsPage";
 import ShowroomSalesWorkspace from "../modules/showroom/ShowroomSalesWorkspace";
 import ShowroomFinancePage from "../modules/showroom/ShowroomFinancePage";
 import ShowroomAftersalesPage from "../modules/showroom/ShowroomAftersalesPage";
@@ -31,8 +30,10 @@ import ShowroomAftersalesPage from "../modules/showroom/ShowroomAftersalesPage";
 import AdminHomePage from "../modules/admin/AdminHomePage";
 import AdminUsersPage from "../modules/admin/AdminUsersPage";
 import AdminInventoryPage from "../modules/admin/AdminInventoryPage";
+import AdminShowroomManagementPage from "../modules/admin/AdminShowroomManagementPage";
 import AdminCampaignsPage from "../modules/admin/AdminCampaignsPage";
-import AdminLeadsAssignPage from "../modules/admin/AdminLeadsAssignPage";
+import AdminContractsPage from "../modules/admin/AdminContractsPage";
+import AdminAftersalesPage from "../modules/admin/AdminAftersalesPage";
 import { Box, Typography } from "@mui/material";
 
 function AdminReportsStub() {
@@ -76,10 +77,10 @@ export default function AppRoutes() {
 
           <Route path="/showroom/cars" element={<Navigate to="/showroom/sales" replace />} />
 
-          <Route path="/showroom" element={<ProtectedRoute allowedRoles={[ROLES.SALES]} />}>
+          <Route path="/showroom" element={<ProtectedRoute allowedRoles={[ROLES.SHOWROOM]} />}>
             <Route element={<ShowroomLayout />}>
               <Route index element={<ShowroomHomePage />} />
-              <Route path="leads" element={<ShowroomLeadsPage />} />
+              <Route path="leads" element={<Navigate to="/showroom/sales" replace />} />
               <Route path="sales" element={<ShowroomSalesWorkspace />} />
               <Route path="finance" element={<ShowroomFinancePage />} />
               <Route path="aftersales" element={<ShowroomAftersalesPage />} />
@@ -90,8 +91,11 @@ export default function AppRoutes() {
             <Route element={<AdminLayout />}>
               <Route index element={<AdminHomePage />} />
               <Route path="inventory" element={<AdminInventoryPage />} />
-              <Route path="leads" element={<AdminLeadsAssignPage />} />
+              <Route path="showrooms" element={<AdminShowroomManagementPage />} />
+              <Route path="leads" element={<Navigate to="/admin/contracts" replace />} />
+              <Route path="contracts" element={<AdminContractsPage />} />
               <Route path="campaigns" element={<AdminCampaignsPage />} />
+              <Route path="aftersales" element={<AdminAftersalesPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="reports" element={<AdminReportsStub />} />
             </Route>

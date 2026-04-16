@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -7,31 +7,75 @@ import {
   CardContent,
   CardMedia,
   Grid,
+  MenuItem,
   Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
 import { portalApi } from "../../services/portalApiService";
 
-const DEMO_EVENTS = [
-  { id: 1, title: "Lễ hội lái thử cuối tuần", subtitle: "Ưu đãi phụ kiện khi đặt cọc", image: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&q=80" },
-  { id: 2, title: "Triển lãm xe điện 2026", subtitle: "Nhận voucher giảm phí trước bạ", image: "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?auto=format&fit=crop&w=800&q=80" },
-];
+function targetScopeLabel(ev) {
+  if (ev?.targetScope === "REGION") {
+    const regionMap = { NORTH: "Miền Bắc", CENTRAL: "Miền Trung", SOUTH: "Miền Nam" };
+    return `Khu vực: ${regionMap[ev.targetRegion] || ev.targetRegion || "—"}`;
+  }
+  if (ev?.targetScope === "PROVINCE") return `Địa điểm: ${ev.targetProvince || "—"}`;
+  if (ev?.targetScope === "SHOWROOM") return `Chi nhánh: ${ev.targetShowroomName || ev.targetShowroomId || "—"}`;
+  return "Phạm vi: Toàn quốc";
+}
 
 export default function PromotionsPage() {
-  const [eventId, setEventId] = useState("");
-  const [voucherCode, setVoucherCode] = useState("");
+  const [campaigns, setCampaigns] = useState([]);
+  const [myVouchers, setMyVouchers] = useState([]);
+  const [showrooms, setShowrooms] = useState([]);
+  const [selectedShowroomId, setSelectedShowroomId] = useState("");
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [loading, setLoading] = useState(false);
 
-  const registerEvent = async (id) => {
-    const eid = id || Number(eventId);
-    if (!eid) return;
+  const loadData = async (showroomId = "") => {
+    setLoading(true);
+    try {
+      const [campaignsRes, vouchersRes, showroomsRes] = await Promise.all([
+        portalApi.getCustomerCampaigns(showroomId || undefined),
+        portalApi.getMyVouchers(),
+        portalApi.getShowrooms(),
+      ]);
+      setCampaigns(campaignsRes?.result || []);
+      setMyVouchers(vouchersRes?.result || []);
+      setShowrooms(showroomsRes?.result || []);
+    } catch (e) {
+      setMsg({ type: "error", text: e.message || "Không tải được dữ liệu khuyến mãi." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const registerCampaign = async (id) => {
+    if (!id) return;
     setLoading(true);
     setMsg({ type: "", text: "" });
     try {
-      await portalApi.registerEvent(eid);
-      setMsg({ type: "success", text: `Đã đăng ký sự kiện #${eid} — POST /events/{eventId}/register` });
+      const res = await portalApi.registerCampaign(id, selectedShowroomId || undefined);
+      await loadData(selectedShowroomId);
+      const voucher = res?.result;
+      setMsg({
+        type: "success",
+        text:
+          `Đăng ký chiến dịch thành công. Mã: ${voucher?.code || "—"} | ` +
+          `Chiến dịch: ${voucher?.campaignName || "—"} | ` +
+          `Giá trị: ${voucher?.discountType || "—"} ${voucher?.discountValue ?? "—"} | ` +
+          `Trạng thái: ${voucher?.status || "—"} | ` +
+          `Hết hạn: ${voucher?.expiredAt || "—"}`,
+      });
     } catch (e) {
       setMsg({ type: "error", text: e.message || "Lỗi đăng ký." });
     } finally {
@@ -39,28 +83,15 @@ export default function PromotionsPage() {
     }
   };
 
-  const claim = async () => {
-    if (!voucherCode.trim()) return;
-    setLoading(true);
-    setMsg({ type: "", text: "" });
-    try {
-      await portalApi.claimVoucher(voucherCode.trim());
-      setMsg({ type: "success", text: "Đã thêm mã vào ví — POST /vouchers/{code}/claim" });
-      setVoucherCode("");
-    } catch (e) {
-      setMsg({ type: "error", text: e.message || "Lỗi claim." });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const visibleCampaigns = campaigns;
 
   return (
     <Box>
       <Typography variant="h4" fontWeight={800} gutterBottom>
-        Sự kiện &amp; khuyến mãi
+        Chiến dịch khuyến mãi
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Banner minh họa — đăng ký bằng ID sự kiện thật từ hệ thống Marketing.
+        Đăng ký chiến dịch để nhận voucher từ kho ACTIVE. Trạng thái voucher: ACTIVE → CLAIMED → USED hoặc EXPIRED.
       </Typography>
       {msg.text ? (
         <Alert severity={msg.type === "success" ? "success" : "error"} sx={{ mb: 2 }}>
@@ -68,53 +99,109 @@ export default function PromotionsPage() {
         </Alert>
       ) : null}
 
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <TextField
+          fullWidth
+          select
+          label="Lọc theo showroom"
+          value={selectedShowroomId}
+          onChange={(e) => {
+            const showroomId = e.target.value;
+            setSelectedShowroomId(showroomId);
+            loadData(showroomId);
+          }}
+          helperText={
+            selectedShowroomId
+              ? "Đang hiển thị chiến dịch gán cho showroom đã chọn."
+              : "Mặc định hiển thị các chiến dịch áp dụng toàn bộ khách hàng."
+          }
+        >
+          <MenuItem value="">
+            <em>Tất cả khách hàng (chiến dịch ALL)</em>
+          </MenuItem>
+          {showrooms.map((s) => (
+            <MenuItem key={s.id} value={String(s.id)}>
+              {s.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Paper>
+
       <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-        Sự kiện đang diễn ra
+        Chiến dịch đang áp dụng
       </Typography>
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        {DEMO_EVENTS.map((ev) => (
+        {visibleCampaigns.map((ev) => (
           <Grid item xs={12} md={6} key={ev.id}>
             <Card>
-              <CardMedia component="img" height="160" image={ev.image} alt={ev.title} />
+              <CardMedia
+                component="img"
+                height="160"
+                image="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&q=80"
+                alt={ev.name}
+              />
               <CardContent>
-                <Typography variant="h6">{ev.title}</Typography>
+                <Typography variant="h6">{ev.name}</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {ev.subtitle}
+                  {ev.description || "Chiến dịch khuyến mãi dành cho khách hàng."}
                 </Typography>
-                <Button variant="contained" onClick={() => registerEvent(ev.id)} disabled={loading}>
-                  Đăng ký tham gia (event #{ev.id})
+                <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1 }}>
+                  {targetScopeLabel(ev)}
+                </Typography>
+                <Button variant="contained" onClick={() => registerCampaign(ev.id)} disabled={loading}>
+                  Đăng ký nhận voucher (campaign #{ev.id})
                 </Button>
               </CardContent>
             </Card>
           </Grid>
         ))}
+        {visibleCampaigns.length === 0 ? (
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                {selectedShowroomId
+                  ? "Showroom này chưa có chiến dịch được gán."
+                  : "Chưa có chiến dịch áp dụng toàn bộ khách hàng."}
+              </Typography>
+            </Paper>
+          </Grid>
+        ) : null}
       </Grid>
-
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="subtitle2" gutterBottom>
-          Hoặc nhập ID sự kiện thủ công
-        </Typography>
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-          <TextField size="small" label="Event ID" value={eventId} onChange={(e) => setEventId(e.target.value)} />
-          <Button variant="outlined" onClick={() => registerEvent()} disabled={loading}>
-            Đăng ký
-          </Button>
-        </Box>
-      </Paper>
 
       <Typography variant="h6" gutterBottom>
         Ví voucher
       </Typography>
       <Paper sx={{ p: 2 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Nhập mã săn được trên web / từ nhân viên để lưu vào ví cá nhân.
-        </Typography>
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <TextField label="Mã voucher" value={voucherCode} onChange={(e) => setVoucherCode(e.target.value.toUpperCase())} />
-          <Button variant="contained" color="secondary" onClick={claim} disabled={loading}>
-            Thêm vào ví
-          </Button>
-        </Box>
+        {myVouchers.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            Chưa có voucher trong ví.
+          </Typography>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Mã</TableCell>
+                <TableCell>Campaign</TableCell>
+                <TableCell>Giá trị</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell>Hết hạn</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {myVouchers.map((v) => (
+                <TableRow key={v.code}>
+                  <TableCell>{v.code}</TableCell>
+                  <TableCell>{v.campaignName || "—"}</TableCell>
+                  <TableCell>
+                    {v.discountType || "—"} {v.discountValue ?? "—"}
+                  </TableCell>
+                  <TableCell>{v.status || "—"}</TableCell>
+                  <TableCell>{v.expiredAt || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </Paper>
     </Box>
   );

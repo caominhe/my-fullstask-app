@@ -7,6 +7,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.fcar.be.core.exception.AppException;
+import com.fcar.be.core.exception.ErrorCode;
+
 public class SecurityUtils {
     private SecurityUtils() {}
 
@@ -35,5 +38,9 @@ public class SecurityUtils {
         }
 
         return Optional.empty();
+    }
+
+    public static Long requireCurrentUserId() {
+        return getCurrentUserId().orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
     }
 }

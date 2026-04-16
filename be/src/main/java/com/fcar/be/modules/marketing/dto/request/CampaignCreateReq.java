@@ -6,6 +6,8 @@ import java.util.Set;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import com.fcar.be.modules.marketing.enums.CampaignRegion;
+import com.fcar.be.modules.marketing.enums.CampaignTargetScope;
 import com.fcar.be.modules.marketing.enums.DiscountType;
 
 import lombok.*;
@@ -23,6 +25,15 @@ public class CampaignCreateReq {
 
     @NotNull
     BigDecimal discountValue;
+
+    @NotNull
+    CampaignTargetScope targetScope;
+
+    CampaignRegion targetRegion;
+
+    String targetProvince;
+
+    Long targetShowroomId;
 
     // Admin truyền danh sách ID xe vào đây (Có thể rỗng)
     Set<Long> applicableMasterDataIds;

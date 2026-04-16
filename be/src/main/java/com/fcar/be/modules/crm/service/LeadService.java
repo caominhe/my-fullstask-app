@@ -10,9 +10,7 @@ import com.fcar.be.modules.crm.enums.LeadStatus;
 public interface LeadService {
     LeadRes createLead(LeadCreateReq request);
 
-    LeadRes assignSales(Long leadId, Long salesId);
-
-    List<LeadRes> getLeadsBySales(Long salesId);
+    List<LeadRes> getLeadsForCurrentSales(Long salesUserId);
 
     // Bổ sung 2 hàm mới phục vụ Funnel
     void logActivity(Long leadId, Long customerUserId, LeadActivityReq req);

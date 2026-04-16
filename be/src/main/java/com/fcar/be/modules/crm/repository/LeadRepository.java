@@ -9,5 +9,5 @@ import com.fcar.be.modules.crm.entity.Lead;
 
 @Repository
 public interface LeadRepository extends JpaRepository<Lead, Long> {
-    List<Lead> findByAssignedSalesId(Long salesId);
+    List<Lead> findByShowroomIdOrderByCreatedAtDesc(Long showroomId);
 }

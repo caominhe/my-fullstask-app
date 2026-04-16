@@ -36,14 +36,14 @@ public class Lead {
     @Column(nullable = false)
     String phone;
 
+    @Column(name = "interested_vin", length = 17)
+    String interestedVin;
+
     @Enumerated(EnumType.STRING)
     LeadSource source;
 
     @Column(name = "showroom_id")
-    Long showroomId; // ID Showroom mà khách hàng quan tâm/chọn
-
-    @Column(name = "assigned_sales_id")
-    Long assignedSalesId; // ID nhân viên Sales phụ trách
+    Long showroomId; // ID showroom tiếp nhận/phụ trách lead
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

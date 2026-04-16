@@ -8,6 +8,15 @@ export async function fetchMyInfo(opts = {}) {
   return data.result;
 }
 
+export async function updateMyInfo({ phone, citizenId, address }) {
+  const data = await apiClient.put("/users/my-info", {
+    phone: phone || undefined,
+    citizenId: citizenId || undefined,
+    address: address || undefined,
+  });
+  return data.result;
+}
+
 export async function registerUser({ email, password, fullName, phone }) {
   const data = await apiClient.post(
     "/users/register",

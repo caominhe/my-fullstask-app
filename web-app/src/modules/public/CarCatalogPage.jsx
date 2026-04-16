@@ -24,7 +24,7 @@ function formatPrice(v) {
   return new Intl.NumberFormat("vi-VN").format(n) + " ₫";
 }
 
-export default function CarCatalogPage() {
+export default function CarCatalogPage({ embedded = false }) {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,7 +35,7 @@ export default function CarCatalogPage() {
       setLoading(true);
       setError("");
       try {
-        const data = await portalApi.getCars();
+        const data = await portalApi.getCars({ excludeWithContract: true });
         if (!cancelled) setCars(data?.result || []);
       } catch (e) {
         if (!cancelled) setError(e.message || "Không tải được danh sách xe.");
@@ -52,38 +52,53 @@ export default function CarCatalogPage() {
 
   return (
     <Box>
-      <Box
-        sx={{
-          borderRadius: 2,
-          overflow: "hidden",
-          mb: 4,
-          position: "relative",
-          minHeight: { xs: 200, md: 280 },
-          backgroundImage:
-            "linear-gradient(90deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 55%, transparent 100%), url(https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1600&q=80)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          display: "flex",
-          alignItems: "center",
-          px: { xs: 2, md: 6 },
-          py: { xs: 3, md: 5 },
-        }}
-      >
-        <Box sx={{ maxWidth: 560 }}>
-          <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.85)", letterSpacing: 2 }}>
-            FCAR SHOWROOM ONLINE
-          </Typography>
-          <Typography variant="h3" component="h1" sx={{ color: "#fff", fontWeight: 800, mb: 1, fontSize: { xs: "1.75rem", md: "2.5rem" } }}>
-            Chọn chiếc xe của bạn
-          </Typography>
-          <Typography variant="body1" sx={{ color: "rgba(255,255,255,0.9)", mb: 2 }}>
-            Danh sách tồn kho cập nhật từ API GET /cars — xem chi tiết cấu hình &amp; đăng ký lái thử.
-          </Typography>
-          <Button variant="contained" color="secondary" size="large" component={RouterLink} to={ROUTES.TEST_DRIVE}>
-            Đăng ký lái thử
-          </Button>
+      {!embedded ? (
+        <Box
+          sx={{
+            borderRadius: 2,
+            overflow: "hidden",
+            mb: 4,
+            position: "relative",
+            minHeight: { xs: 200, md: 280 },
+            backgroundImage:
+              "linear-gradient(90deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 55%, transparent 100%), url(https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1600&q=80)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            display: "flex",
+            alignItems: "center",
+            px: { xs: 2, md: 6 },
+            py: { xs: 3, md: 5 },
+          }}
+        >
+          <Box sx={{ maxWidth: 560 }}>
+            <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.85)", letterSpacing: 2 }}>
+              FCAR SHOWROOM ONLINE
+            </Typography>
+            <Typography
+              variant="h3"
+              component="h1"
+              sx={{ color: "#fff", fontWeight: 800, mb: 1, fontSize: { xs: "1.75rem", md: "2.5rem" } }}
+            >
+              Chọn chiếc xe của bạn
+            </Typography>
+            <Typography variant="body1" sx={{ color: "rgba(255,255,255,0.9)", mb: 2 }}>
+              Danh sách tồn kho cập nhật từ API GET /cars — xem chi tiết cấu hình &amp; đăng ký lái thử.
+            </Typography>
+            <Button variant="contained" color="secondary" size="large" component={RouterLink} to={ROUTES.TEST_DRIVE}>
+              Đăng ký lái thử
+            </Button>
+          </Box>
         </Box>
-      </Box>
+      ) : (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h5" fontWeight={800} gutterBottom>
+            Danh sách xe hiện có
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Dữ liệu lấy trực tiếp từ API GET /cars.
+          </Typography>
+        </Box>
+      )}
 
       {error ? (
         <Alert severity="error" sx={{ mb: 2 }}>

@@ -1,5 +1,6 @@
 package com.fcar.be.modules.inventory.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
@@ -36,6 +37,18 @@ public class Car {
 
     @Column(nullable = false)
     String color;
+
+    @Column(name = "image_url", length = 1000)
+    String imageUrl;
+
+    @Column(name = "image_urls", columnDefinition = "TEXT")
+    String imageUrlsJson;
+
+    @Column(name = "image_folder_url", length = 1000)
+    String imageFolderUrl;
+
+    @Column(name = "listed_price", precision = 15, scale = 2)
+    BigDecimal listedPrice;
 
     @Column(name = "showroom_id")
     Long showroomId;

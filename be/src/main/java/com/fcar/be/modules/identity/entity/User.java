@@ -34,6 +34,12 @@ public class User extends BaseAuditableEntity {
     @Column(name = "phone", unique = true)
     String phone;
 
+    @Column(name = "citizen_id", unique = true, length = 20)
+    String citizenId;
+
+    @Column(name = "address", length = 255)
+    String address;
+
     @Column(name = "showroom_id")
     Long showroomId;
 

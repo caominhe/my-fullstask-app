@@ -16,6 +16,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fcar.be.core.exception.AppException;
@@ -70,6 +71,7 @@ public class AuthenticationService {
 
         String accessToken = jwtTokenProvider.generateToken(user.getEmail());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
+
         return AuthenticationResponse.builder()
                 .token(accessToken)
                 .refreshToken(refreshToken)
@@ -144,6 +146,9 @@ public class AuthenticationService {
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             log.error("Google token exchange HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
+        } catch (RestClientException e) {
+            log.error("Google token exchange failed: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
         }
 
         Map<String, Object> body = tokenResponse.getBody();
@@ -163,6 +168,9 @@ public class AuthenticationService {
             userInfoResponse = restTemplate.exchange(userInfoEndpoint, HttpMethod.GET, userEntity, Map.class);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             log.error("Google userinfo HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
+        } catch (RestClientException e) {
+            log.error("Google userinfo call failed: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.GOOGLE_OAUTH_FAILED);
         }
         Map<String, Object> userInfo = userInfoResponse.getBody();
